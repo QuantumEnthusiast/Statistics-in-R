@@ -1,0 +1,85 @@
+---
+title: "Boxplot"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Box plot
+
+Also known as _ mustache box_, _box diagram_ or _box & whisker plot_.
+See [M&R, section 6-4] ().
+
+`` `{r}
+solar <- load.mr.mnemonic ('M&R 6-12 solar intensity Spain')
+solar <- c (solar, 387)
+`` `
+`` `{r}
+summary (solar)
+`` `
+`` `{r}
+stripchart (solar)
+`` `
+
+One wants to merge the information from `summary` with the most important points of a 'stripchart', and at the same time abstract about the points except the outliers.
+
+The solution is a "box plot".
+The center is a dos from the $ 1 $ to the $ 3 $ the _quartile_, with the _mediaan_ as a bold line in the middle.
+So half of the data is within the dos.
+The _snoren_ go up to the outer points within an extra $ 1.5 $ times the interquartile distance from the dos.
+* Outlier * within $ 1.5 $ to $ 3 $ times the interquartile distance from the dos are normal, outside $ 3 $ times * extreme *.
+Outliers are drawn as points.
+See [M&R, figure 6-13] ().
+
+In "box plot" there is no distinction between normal and extreme outliers. Snores go up to $ 1.57 $ times the interquartile distance instead of $ 1.5 $
+
+`` `{r}
+box plot (solar)
+library ('e1071')
+solar skewness <- e1071 :: skewness (solar)
+`` `
+
+There are no outliers here and the graph printed above shows that the data is skewed, with a longer start after below. The _kindness_ is therefore negative and here equal to `r solar.kindness`.
+
+# For normal distribution
+
+`` `{r}
+quartiles <- qnorm (c (1, 3) / 4)
+quartiles
+mustache distance <- 2 * 1.57 * 4/3
+mustache distance
+`` `
+
+
+For a $ \ Normal {\ mu, \ sigma} $ distribution, the first quartile is at $ \ mu \ frac {2} {3} \ sigma $ and the third quartile at $ \ mu + frac {2} {3 } \ sigma $.
+So the interquartile distance is equal to $ frac {4} {3} \ sigma $.
+The lines are therefore $ 2 \ times1.57 \ times \ frac {4} {3} \ sigma = `r mustache.set`` sigma \ simeq 4 \ sigma $ apart.
+So $ 95 $% of the data is in trouble and $ 5 $% are outliers and are drawn as points.
+
+For a normal distribution, a box plot would be very symmetrical, with about $ 5 $% outliers (the $ 32 \ sigma $ domain).
+In this sample, only $ 5 $ outliers of the expected $ 522 \ times 0.05 = 25 $ can be seen.
+The number of outliers follows a $ \ Poisson {0.05} $ distribution.
+`` `{r}
+set.seed (20180618)
+box plot (rnorm (522, 102, 20))
+`` `

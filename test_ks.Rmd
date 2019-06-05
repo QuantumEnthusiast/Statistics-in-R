@@ -1,0 +1,165 @@
+---
+title: "Kolmogorov-Smirnoff & Shapiro-Wilk tests"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Kolmogorov-Smirnoff key
+
+People want to know whether a sample follows a known continuous probability distribution.
+
+## Theory
+
+We follow the 10 steps in [M&R, section 9-1.6] ().
+
+0. * Assumptions *: Sample $ x_1, \ dotsc, x_n $ of i.i.d. $ V $ divided probability variables. $ V $ is a continuous probability distribution.
+
+1. * Parameter of interest *: Distribution $ V $.
+
+2. * Null hypothesis *:
+$$ H_0: V = V_0 \. $$
+
+3. * Alternative hypothesis *:
+$$ H_1: V \ not = V_0 \
+4. * Test variable *:
+Suppose $ f_n $ is the empirical probability distribution function of $ \ Set {x_1, \ dotsc, x_n} $.
+In short,
+$$
+  f_n (x): = \ frac {1} {n} \ Cardinality {\ Set {1 \ le i \ le n \ mid {} x_i \ le x}}
+  \ ,.
+$$
+The theoretical probability distribution function under $ H_0 $ is $ F_0 $. That is, $ F_0 $ is the probability distribution function of the $ V_0 $ distribution.
+The test statistic is
+$$
+  d: = \ sup \ Set {\ Modulus {f_n (x) - F_0 (x)} \ mid {} x \ in \ Real} \ ,.
+$$
+
+$$
+  d = \ max \ Set {\ Modulus {\ frac {i} {n} -F_0 (x_i)}, \ Modulus {\ frac {i-1} {n} -F_0 (x_i)} \ mid {} 1 \ le {} i \ le {} n}
+  \ ,.
+$$
+Of course $ d \ is in [0,1] $.
+Under $ H_0 $, $ D $ would be small.
+The $ D $ distribution is complicated and is skipped (ask in TSPR after a Brownian bridge).
+
+`` `{r}
+# https://stats.stackexchange.com/questions/222294/understanding-kolmogorov-smirnov-test-in-r
+# for calculation of two sample test statistic
+`` `
+
+5. * Decision *:
+Choose a significance level $ \ alpha \ in [0,1] $.
+Reject $ H_0 $ as the $ p $ value $ \ ge \ alpha $.
+
+6. * Calculation *: transferred.
+
+7. * Conclusion *:
+If $ p \ ge {} 1- \ alpha $, then you must continue to accept $ H_0 $.
+If $ p <\ alpha $, you can reject $ H_0 $.
+
+
+`` `{r}
+alpha <- 0.06
+data <- load.mr.mnemonic ('M&R 9-58 interior tempeturature aerated concrete in C')
+`` `
+
+`` `{r}
+data
+summary
+sd (data)
+`` `
+
+`` `{r}
+qq norm (data, asp = 1)
+qqline (data)
+`` `
+
+`` `{r}
+plot (ecdf (data))
+dom <- seq (min (data) -1, max (data) + 1, length.out = 100)
+lines (dom, pnorm (dom, mean = 22.5, sd = 0.4), col = 'red')
+`` `
+
+
+`` `{r}
+ks.test (x = data, y = 'pnorm', mean = 22.5, sd = 0.2)
+`` `
+It can be a $ \ Normal {22.5.0.2} $ distribution.
+`` `{r}
+ks.test (x = data, y = 'pnorm', mean = 22, sd = 0.4)
+`` `
+
+It can be a $ \ Normal {22.0.4} $ distribution.
+
+`` `{r}
+ks.test (x = data, y = 'pnorm', mean = 0, sd = 1)
+ks.test (x = data, y = 'pnorm')
+`` `
+
+It is not a $ \ Normal {0.1} $ distribution.
+
+Note 1: With only $ `r length (data)` $ data and parameters estimated from the sample not really expected otherwise.
+
+Note 2: We did 3 tests on the same data ... so there should be a Bonferroni correction.
+
+## Example expoential distribution
+
+`` `{r}
+lambda <- 2
+d1 <- rexp (100, rate = lambda)
+d2 <- rexp (110, rate = lambda + 0.1)
+d3 <- rexp (200, rate = lambda)
+`` `
+`` `{r}
+ks.test (d1, 'pexp', rate = lambda)
+`` `
+
+We continue to accept that sample 1 comes from a $ \ Exp {`r lambda`} $ distribution.
+
+`` `{r}
+ks.test (d2, 'pexp', rate = lambda)
+`` `
+
+We reject that sample 2 comes from a $ \ Exp {`r lambda`} $ distribution.
+
+`` `{r}
+ks.test (d1, d2)
+`` `
+
+We continue to accept that samples 1 and 3 are equally distributed.
+
+# Shapiro-Wilk key
+
+Only for normal distribution.
+
+`` `{r}
+shapiro.test (data)
+`` `
+
+We continue to accept that "data" follows a normal distribution.
+
+`` `{r}
+shapiro.test (rnorm (100, mean = 5, sd = 3))
+shapiro.test (runif (100, min = 2, max = 4))
+`` `

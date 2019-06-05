@@ -1,0 +1,158 @@
+---
+title: "Bonferroni"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# The problem of multiple keys
+
+Suppose
+
+* there are several different keys on the same data,
+* or tests on related data (for example, various attributes in a table).
+ 
+People want to know if they can reject all $ H_0 $ at the same time.
+The problem is that each test only says something about itself, but not the (unknown) connection with other tests.
+
+# Bonferroni inequality
+
+The inclusion-exclusion principle
+For events $ E_1, \ dotsc, E_m $ applies
+$$
+  \ Proba (E_1 \ cap \ dotso \ cap {} E_m)
+  =
+  \ sum_ {I \ subsetneq \ Set {1, \ dotsc, m}}
+  (-1) ^ {\ Cardinality {I}} \ Proba \ left (\ bigcap_ {i \ in I} E_i ^ c \ right)
+  \ ,.
+$$
+For three events $ A $, $ B $ and $ C $ it looks like this:
+`` `{r, echo = F}
+knitr :: include_graphics (path = './img/inclusion_exclusion.png')
+`` `
+Or
+$$
+  \ Proba (A ^ c \ cap {} B ^ c \ cap {} C ^ c)
+  =
+  1
+  - \ Proba (A)
+  - \ Proba (B)
+  - \ Proba (C)
+  + \ Proba (A \ cap {} B)
+  + \ Proba (B \ cap {} C)
+  + \ Proba (A \ cap {} C)
+  - \ Proba (A \ cap {} B \ cap {} C)
+  \ ,.
+$$
+
+The * Bonferroni inequality * is a short version of it (the terms with $ \ Cardinality {I} \ le 1 $) and says that
+
+$$
+  \ Proba (E_1 \ cap \ dotso \ cap {} E_m)
+  \ ge
+  1 - \ sum_ {i = 1} ^ m \ Proba (E_i ^ c)
+$$
+This inequality * ignores * all possible interactions between the events.
+
+
+Suppose there are $ m $ keys with a null hypothesis $ H_0 ^ i $ and $ p $ value $ p_i $.
+If $ E_i $ is the "reject $ H_0 ^ i $" event, it means that the $ p $ value of the key with
+$$ H_0: \ text {must not} H_0 ^ i \ text {reject} $$
+a $ p $ value with an upper limit $ \ displaystyle 1-p \ ge 1 - \ sum_ {i = 1} ^ m p_i $, or in short
+$$
+  p \ le \ sum_ {i = 1} ^ m p_i
+  \ ,.
+$$
+We call this the * Bonferroni * correction.
+
+# Do two or more tests
+
+## Keys or expectation value within interval
+
+This is a more general case of an * equivalence test * in [M&R, section 9-10] ().
+
+`` `{r}
+sigma <- 1
+mu.really <- 5
+data <- rnorm (20, mean = mu.echt, sd = sigma)
+alpha <- 0.05
+`` `
+
+We want to test with $ H_0: \ mu \ le 3 $ or $ \ mu \ ge 8 $.
+That is not possible at once.
+We do two tests at level $ \ frac {\ alpha} {2} $.
+
+Test 1: $ H_0: \ mu \ le 3 $ at significance level $ \ frac {\ alpha} {2} $.
+
+`` `{r}
+library ('TeachingDemos')
+key below <- TeachingDemos :: z.test (data, mu = 3, sd = sigma, alternative = "greater", conf.level = 1 - alpha / 2)
+key down
+`` `
+
+Press 2: $ H_0: \ mu \ ge 8 $ at level $ \ frac {\ alpha} {2} $.
+
+`` `{r}
+key above <- TeachingDemos :: z.test (data, mu = 8, sd = sigma, alternative = "less", conf.level = 1 - alpha / 2)
+key above
+`` `
+The combined $ p $ value is the sum of the $ p $ values.
+`` `{r}
+p.value.with <- key. below $ p.value + key above $ p.value
+p.value
+`` `
+So we can reject the hypothesis that $ \ mu_0 \ is in [- \ infty, 3] \ cup [8, \ infty [$.
+
+# Comments
+
+## Two-sided keys
+
+A two-sided test is a combination of two one-sided tests.
+Therefore $ \ frac {\ alpha} {2} $ in all formulas instead of $ \ alpha $.
+
+## Holm correction
+
+Given a vector of $ p $ values.
+`` `{r}
+ps <- sort (c (0.002166366, 0.012480863, 0.014599035, 0.024735216, 0.032798569, 0.042019270, 0.043259286))
+`` `
+`` `{r}
+p.frame <- data.frame (p.raw = ps, p.bf = p.adjust (ps, method = 'bonferroni'), p.holm = p.adjust (ps, method = 'holm'))
+p.frame
+`` `
+
+## Where multiple keys still come from
+
+* When splitting samples and tests on the parts, the tests are independent. But Bonferroni gives an easy first approach.
+
+* With too little data there is the * bootstrap * method. That means that you repeatedly pull from your sample to make a larger, synthetic sample.
+
+`` `{r}
+sample.small <- runif (12.0.1)
+sample.small
+summary (sample.small)
+`` `
+`` `{r}
+sample.groter <- sample (sample.small, size = 500, replace = T)
+summary (sample.groter)
+`` `

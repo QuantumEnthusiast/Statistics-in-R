@@ -1,0 +1,132 @@
+---
+title: "Graph 1d"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Charts 1d
+
+Given numerical data $ x_1, \ dotsc, x_n $.
+We want to plot the data to gain visual insight.
+
+`` `{r}
+data <- load.mr.mnemonic ('M&R 6-31 shear strength titanium spot welds')
+`` `
+`` `{r}
+dates
+`` `
+
+## Dotchart
+
+Plot data point $ i $ on $ (x_i, i) $.
+`` `{r}
+dotchart (data)
+`` `
+
+
+## Tribal leaf foliage
+
+Compare the first important decimal.
+`` `{r}
+voice (data)
+`` `
+
+## Stripchart or 1d scatter plot
+
+Only useful for small samples.
+
+`` `{r}
+stripchart (data)
+`` `
+
+
+## Histogram
+
+`` `{r}
+hist (data)
+h <- hist (data, breaks = 18)
+h
+`` `
+
+
+## Barplot
+
+Plot data point $ i $ on $ (i, x_i) $.
+`` `{r}
+bar plot (data)
+`` `
+
+Limiting a graph to a range depending on the values ​​has advantages and disadvantages.
+The advantage is a better view of details and differences.
+The disadvantage is whether the always visible strong differences are essential.
+This problem often exists with stock prices.
+`` `{r}
+bar plot (data, ylim = range (data))
+`` `
+
+## Empirical distribution function
+
+Arrange the points and plot $ (x_i, \ frac {k_i} {n}) $, where $ k_i: = | \ Set {x_j \ mid {} x_j \ le {} x_i} $, the share of smaller data points.
+`` `{r}
+plot (ecdf (data), main = 'Empirical distribution function')
+`` `
+If the sample comes from a known distribution, then the empirical distribution function is close to the real distribution function (in proportion $ n $ increases).
+Here with $ \ Uniform {[1,4]} $.
+`` `{r}
+xrange <- seq (0.5, 4.5, by = 0.01)
+plot (ecdf (runif (20, min = 1, max = 4)), main = 'Empirical distribution function')
+
+plot (xrange, punif (xrange, min = 1, max = 4), type = 'l', col = 'black', main = 'Empirical distribution function: stochast')
+n <- 10
+colors <- grDevices :: rainbow (n)
+for (i in 1: n) {
+  lines (xrange, ecdf (runif (100, min = 1, max = 4)) (xrange), col = colors [i])
+}
+
+plot (xrange, punif (xrange, min = 1, max = 4), type = 'l', col = 'black', main = 'Empirical distribution function: convergence')
+n <- 10
+colors <- grDevices :: rainbow (n)
+for (i in 1: n) {
+  lines (xrange, ecdf (runif (2 ^ i, min = 1, max = 4)) (xrange), col = colors [i])
+}
+```
+
+## Empirical probability density function
+
+Idea: make a small error distribution around each data point (the normal distribution is popular) and add it with the weight $ \ frac {1} {n} $ to get a probability density function.
+
+
+`` `{r}
+plot (density (data))
+`` `
+
+Note: Can only be applied to continuous distributions. Also pay attention if you know that you have to be within a certain value domain.
+Here is an example with $ \ Uniform {[1,4]} $: only the red part of the empirical probability density function is a good estimate of the real probability density function in green.
+
+`` `{r}
+simul <- runif (1000, min = 1, max = 4)
+plot (density (simul), main = 'Empirical probability density function with limits')
+lines (density (simul, from = 1, to = 4), col = 'red')
+lines (seq (0, 5, by = 0.01), dunif (seq (0, 5, by = 0.01), min = 1, max = 4), col = 'green')
+`` `

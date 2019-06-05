@@ -1,0 +1,262 @@
+---
+title: "Multilinear Reression: ANOVA"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# ANOVA for multilinear regression
+
+ANOVA stands for "ANalysis Of VAriance" or just variance analysis.
+
+The question is: how useful is a new regression variable with a new coefficient? How does this change the _proportion declared variance_ $ R ^ 2 $?
+
+If $ (X_1, \ dotsc, X_k) $ are independent of each other, then it follows
+$$
+  Y = \ beta_0 + \ beta_1 X_1 + \ dotso + \ beta_k X_k + E
+$$
+Which
+$$
+  \ Variance (Y) = \ beta_1 ^ 2 \ Variance (X_1) + \ dotso + \ beta_k ^ 2 \ Variance (X_k) + \ Variance (E)
+  \ ,.
+$$
+This permits building a model term by term and comparing the change in $ R ^ 2 $.
+
+## Data
+
+`` `{r}
+p.df <- load.mr.mnemonic ('M&R 12E-1 patient satisfaction')
+`` `
+
+`` `{r}
+str (p.df)
+summary (p.df)
+`` `
+
+## Basic model
+
+`` `{r}
+p.lm.1 <- lm (satisfaction ~ age + severity + anxiety, data = p.df)
+p.coef.1 <- coefficients (p.lm.1)
+`` `
+
+The regression equation is
+$$
+  \ text {satisfaction}
+  = `r sprintf ("%. 2f ", p.coef.1 [1])`
+  + `r sprintf ("%. 2f ", p.coef.1 [2])` \ times {} \ text {age}
+  + `r sprintf ("%. 2f ", p.coef.1 [3])` \ times {} \ text {severity}
+  + `r sprintf ("%. 2f ", p.coef.1 [4])` \ times {} \ text {anxiety}
+  + varepsilon
+  \ ,.
+$$
+```{r}
+summary(p.lm.1)
+```
+
+```{r}
+anova(p.lm.1)
+```
+
+## Smaller model
+
+`` `{r}
+p.lm.2 <- lm (satisfaction ~ age + severity, data = p.df)
+p.coef.2 <- coefficients (p.lm.2)
+`` `
+
+The regression equation is
+$$
+  \ text {satisfaction}
+  = `r sprintf ("%. 2f ", p.coef.2 [1])`
+  + `r sprintf ("%. 2f ", p.coef.2 [2])` \ times {} \ text {age}
+  + `r sprintf ("%. 2f ", p.coef.2 [3])` \ times {} \ text {severity}
+  + varepsilon
+  \ ,.
+$$
+The basic regression equation model was
+$$
+  \ text {satisfaction}
+  = `r sprintf ("%. 2f ", p.coef.1 [1])`
+  + `r sprintf ("%. 2f ", p.coef.1 [2])` \ times {} \ text {age}
+  + `r sprintf ("%. 2f ", p.coef.1 [3])` \ times {} \ text {severity}
+  + `r sprintf ("%. 2f ", p.coef.1 [4])` \ times {} \ text {anxiety}
+  + varepsilon
+  \ ,.
+$$
+
+`` `{r}
+summary (p.lm.2)
+anova (p.lm.2)
+`` `
+
+## Order peels
+
+`` `{r}
+p.lm.3 <- lm (satisfaction ~ anxiety + age + severity, data = p.df)
+p.coef.3 <- coefficients (p.lm.3)
+`` `
+
+Model 3 regression comparison:
+$$
+  \ text {satisfaction}
+  = `r sprintf ("%. 2f ", p.coef.3 [1])`
+  + `r sprintf ("%. 2f ", p.coef.3 [3])` \ times {} \ text {age}
+  + `r sprintf ("%. 2f ", p.coef.3 [4])` \ times {} \ text {severity}
+  + `r sprintf ("%. 2f ", p.coef.3 [2])` \ times {} \ text {anxiety}
+  + varepsilon
+  \ ,.
+$$
+
+Model 1 regression comparison:
+$$
+  \ text {satisfaction}
+  = `r sprintf ("%. 2f ", p.coef.1 [1])`
+  + `r sprintf ("%. 2f ", p.coef.1 [2])` \ times {} \ text {age}
+  + `r sprintf ("%. 2f ", p.coef.1 [3])` \ times {} \ text {severity}
+  + `r sprintf ("%. 2f ", p.coef.1 [4])` \ times {} \ text {anxiety}
+  + varepsilon
+  \ ,.
+$$
+
+```{r}
+summary(p.lm.3)
+anova(p.lm.3)
+anova(p.lm.1)
+```
+
+## Repetition F-test model 1 complete
+
+`` `{r}
+p.anova.1 <- anova (p.lm.1)
+p.anova.1
+`` `
+
+The classic $ F $ key is given $ H_0: \ beta_1 = beta_2 = \ beta_3 = 0 $ that $ \ beta_0 = `r sprintf ("%. 2f ", p.coef.1 [1])` $. See [M&R, (12-19)] ().
+
+`` `{r}
+df.1 <- sum (p.anova.1 $ Df [1: 3])
+sk.1 <- sum (p.anova.1 $ `Sum Sq` [1: 3])
+df.2 <- sum (p.anova.1 $ Df [4: 4])
+sk.2 <- sum (p.anova.1 $ `Sum Sq` [4: 4])
+f <- (sk.1 / df.1) / (sk.2 / df.2)
+p <- pf (f, df.1, df.2, lower.tail = F)
+data.frame (
+  name = c ('sk.1', 'df.1', 'sk.2', 'df.2', 'f', 'p')
+, value = as.character (c (sk.1, df.1, sk.2, df.2, f, p))
+)
+`` `
+`` `{r}
+summary (p.lm.1)
+`` `
+
+## F key on multiple variables
+
+`` `{r}
+p.anova.1
+`` `
+
+How important is it to add "anxiety" and "severity"? Or vice versa, we test $ H_0: \ beta_2 = \ beta_3 = 0 $ given that $ \ beta_0 = `r sprintf ("%. 2f ", p.coef.1 [1])` $ and $ \ beta_1 = `r sprintf ("%. 2f", p.coef.1 [2]) `$. See [M&R, (12-28) and (12-33)] ().
+
+`` `{r}
+anova (lm (satisfaction ~ age, data = p.df), p.lm.1)
+`` `
+
+`` `{r}
+df.1 <- sum (p.anova.1 $ Df [2: 3])
+sk.1 <- sum (p.anova.1 $ `Sum Sq` [2: 3])
+df.2 <- sum (p.anova.1 $ Df [4: 4])
+sk.2 <- sum (p.anova.1 $ `Sum Sq` [4: 4])
+f <- (sk.1 / df.1) / (sk.2 / df.2)
+p <- pf (f, df.1, df.2, lower.tail = F)
+data.frame (
+  name = c ('sk.1', 'df.1', 'sk.2', 'df.2', 'f', 'p')
+, value = as.character (c (sk.1, df.1, sk.2, df.2, f, p))
+)
+`` `
+
+# Multicollinearity
+
+See [M&R, section 12-6.4] ().
+What happens if the $ (X_i) _ {i = 1} ^ k $ are not independent of each other?
+
+Characters:
+* The $ F $ key is significant, but it is not the individual $ t $ keys.
+* The coefficients in a regression equation with the new variable change considerably.
+* Strongly positive (negative) with $ Y $ correlated variables have coefficients with different (equal) signs.
+* The variance inflation factor is large.
+
+`` `{r}
+mc.n <- 150
+mc.z1 <- runif (mc.n, min = 0, max = 1)
+mc.z2 <- runif (mc.n, min = 0, max = 1)
+mc.z3 <- runif (mc.n, min = 1, max = 5)
+mc.z4 <- rt (mc.n, df = 4)
+mc.e <- rnorm (mc.n)
+mc.df <- data.frame (
+  y = 2 * mc.z1 - mc.z2 + 0 * mc.z3 + mc.z4 + mc.e
+, x1 = mc.z1 + mc.z3
+, x2 = mc.z2 + mc.z3
+, x3 = mc.z4
+)
+`` `
+
+`` `{r}
+library ('corrplot')
+corrplot :: corrplot (cor (mc.df))
+pairs (mc.df)
+`` `
+
+`` `{r}
+mc.lm <- 1m (y ~ x1 + x2 + x3, data = mc.df)
+`` `
+
+`` `{r}
+summary (lm (y ~ x1, data = mc.df))
+summary (lm (y ~ x1 + x2, data = mc.df))
+summary (mc.lm)
+`` `
+
+```{r}
+mc.anova <- anova(mc.lm)
+mc.anova
+```
+
+If $ R ^ 2_j $ is the proportioned variance of $ X_j $ given $ (X_1, \ dotsc, X_ {i-1}, X_i, \ dotsc, X_k) $, then the _ variance inflation factor_ $ C_i: = \ frac {1} {1-R ^ 2_j} $ a measure of the multicollinearity (ie linear dependency) of $ X_j $ relative to the other variables. See [M&R, (12-51)] ().
+
+_ Rule of thumb_: $ C_i \ ge {} 5 $ gives concern, $ C_i \ ge {} 10 $ shows a dependency.
+
+Calculation for $ C_3 $ (compare with [M&R, (12-23)] ()):
+
+`` `{r}
+mc.lm.3.sum <- summary (lm (x3 ~ x1 + x2, data = mc.df))
+mc.lm.3.sum
+mc.vif.3 <- 1 / (1 - mc.lm.3.sum $ r.squared)
+mc.vif.3
+`` `
+
+Calculation with `R`:
+`` `{r}
+library ('car')
+car :: vif (mc.lm)
+`` `

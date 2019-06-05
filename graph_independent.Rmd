@@ -1,0 +1,85 @@
+---
+title: "Box plot for multiple samples"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r reset global environment, include = F}
+rm(list = ls())
+```
+```{r load own R methods, include = F}
+source('lib/utils.r')
+```
+```{r tex macro load, child = c('lib/macros.tex')}
+```
+
+# Multiple independent samples
+
+We want to graphically compare samples from two or more groups.
+
+Given three samples
+`` `{r}
+x <- runif (15, min = 0, max = 2)
+y <- runif (25, min = 0.1, max = 1.9) + rnorm (25, sd = 0.1)
+z <- runif (12, min = -0.2, max = 2.1)
+`` `
+`` `{r}
+summary (x)
+summary (y)
+summary (z)
+`` `
+
+`` `{r}
+plot (density (x), col = 'red', ylim = c (0,1), ylab = 'probability', xlab = 'value', xlim = extendrange (c (x, y, z), f = 0.1 ))
+lines (density (y), col = 'blue')
+lines (density (z), col = 'green')
+`` `
+
+# Box plot for multiple independent samples
+
+`` `{r}
+joint <- data.frame (value = c (x, y, z), group = factor (c (rep ('x', length (x)), rep ('y', length (y)), rep ( 'z', length (z)))))
+`` `
+
+`` `{r}
+joint
+`` `
+
+The formula `value ~ group` tells` boxplot` that `value` must be split according to the values ​​of the factor` group`.
+`` `{r}
+attach (joint)
+box plot (value ~ group)
+detach (joint)
+`` `
+
+Alternative:
+`` `{r}
+box plot (value ~ group, data = joint)
+box plot (joint $ value ~ joint $ group)
+`` `
+
+# Stripchart for several independent samples
+
+A strip chart is useful for small samples.
+
+`` `{r}
+stripchart (joint $ value ~ joint $ group)
+`` `
+
+# Quantile-quantile plot for two independent samples
+
+See [Rmd] (./ graph_quantile.Rmd) [html] (./ graph_kwantiel.html).

@@ -1,0 +1,261 @@
+---
+title: "Independent t-test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Motivation independent t-test
+
+Is the expectation value of two independent normally distributed samples the same?
+
+Application:
+
+* Meeting before one after a system / procedure change.
+
+* Measurements of two groups (for example army and air force).
+
+# Theory independent t-test (left-sided, equal variances)
+
+See also [M&R, section 10-2] ().
+
+I. * Assumptions *:
+Given two independent samples $ x_1, \ dotsc, x_n $ from and $ \ Normal {\ mu_1, \ sigma} $ and $ y_1, \ dotsc, y_m $ from a $ \ Normal {\ mu_2, \ sigma} $.
+The $ \ sigma $ parameter is unknown.
+
+II. * Greatness of interest *:
+Difference between $ \ Delta expectation values: = \ mu_1- \ mu_2 $.
+
+III. * Hypotheses *:
+
+Given $ \ Delta_0 \ in \ Real $.
+
+$$ H_0: \ Delta \ ge \ Delta_0 \ qquad (\ text {or:} \ mu_1 \ ge \ mu_2 + \ Delta_0) \,. $$
+$$ H_1: \ Delta <\ Delta_0 \ qquad (\ text {or:} \ mu_1 <\ mu_2 + \ Delta_0) \,. $$
+
+IV. * Test statistic *:
+
+We count under $ \ Delta = \ Delta_0 $.
+
+The partial variance estimators are
+$$
+  s_x ^ 2: = \ frac {1} {n-1} \ sum_ {i = 1} ^ n (x_i - \ Mean {x}) ^ 2
+  \ qquad \ text {en} \ qquad
+  s_y ^ 2: = \ frac {1} {m-1} \ sum_ {j = 1} ^ m (y_j - \ Mean {y}) ^ 2
+  \ ,.
+$$
+The * pooled * variance estimator is a weighted average of $ s_x ^ 2 $ and $ s_y ^ 2 $ is
+$$
+  s_p ^ 2: = \ frac {(n-1) s_x ^ 2 + (m-1) s_y ^ 2} {n + m-2}
+  \ ,.
+$$
+The test statistic is
+$$
+  t: = \ frac {(\ Mean {x} - \ mu_1) - (\ Mean {y} - \ mu_2)}
+   {s_d \ sqrt {\ frac {1} {n} + \ frac {1} {m}}}
+  \ ,.
+$$
+The distribution of $ T $ is $ \ TDist {n + m-2} $. Compare this with the $ t $ key!
+The $ p $ value is
+$$
+  p: = \ Proba (T \ le t) \ ,.
+$$
+
+V. * Decision *:
+Choose significance level $ \ alpha \ in [0,1] $.
+If $ p \ ge {} \ alpha $, then you must continue to accept $ H_0: \ mu_1 \ ge \ mu_2 + \ Delta_0 $.
+If $ p \ le {} \ alpha $, you can reject $ H_0: \ mu_1 \ ge \ mu_2 + \ Delta_0 $ and you know that $ H_1: \ mu_1 <\ mu_2 + \ Delta_0 $ at significance level $ \ alpha $ applies to.
+
+# Example independent t-test (one-sided, equal variances)
+
+`` `{r}
+sample <- load.mr.mnemonic ('M&R 10-18 deflection temperature pipe in C')
+`` `
+`` `{r}
+str (sample)
+summary (sample)
+`` `
+
+## Suddenly
+
+
+First compare by box plot (no factor needed, because columns in the table):
+`` `{r}
+box plot (sample)
+`` `
+
+See if normally distributed:
+`` `{r}
+qq standard (sample $ pipe.1, asp = 1)
+qqline (sample $ pipe.1)
+qq standard (sample $ pipe.2, asp = 1)
+qqline (sample $ pipe.2)
+`` `
+
+The same distribution with quantile-quantile graph.
+The question is: the slope seems to be $ 1 $, but is there an offset?
+`` `{r}
+qqplot (sample $ pipe.1, sample $ pipe.2, asp = 1)
+`` `
+
+## Hypothesis test
+
+Want to test: $ H_0: \ mu_1 \ le \ mu_2 $ (or $ \ Delta \ ge 0 $).
+So: right-sided test.
+
+`` `{r}
+alpha <- 0.05
+key <- t.test (sample $ pipe.1, sample $ pipe.2, alternative = 'greater', var.equal = T)
+test
+`` `
+
+Because `key $ p.value` =` r key is $ p.value`> `r alpha` =` alpha` we cannot reject $ H_0 $.
+
+
+Want to test: $ H_0: \ mu_1 \ le \ mu_2 + 3 $ (or $ \ Delta \ le 3 $).
+
+`` `{r}
+alpha <- 0.05
+key <- t.test (sample $ pipe.1, sample $ pipe.2, mu = 3, alternative = 'greater', var.equal = T)
+test
+`` `
+
+Unfortunately we cannot exclude $ H_0 $.
+
+## Tangent: power of a t-test
+
+`` `{r}
+sd.1 <- sd (sample $ pipe.1)
+sd.2 <- sd (sample $ pipe.2)
+sd.p <- (sd.1 + sd.2) * 1/2
+p <- power.t.test (n = 15, delta = 3, sig.level = 0.05, type = "two.sample", alternative = "one.sided", sd = sd.p)
+p $ power
+`` `
+
+The samples are just too small to do this with $ 90 $%.
+
+`` `{r}
+power.t.test (power = 0.9, delta = 3, sig.level = 0.05, type = "two.sample", alternative = "one.sided", sd = sd.p)
+`` `
+
+We should collect $ 4 $ as much data.
+
+# Theory independent t-test (two-sided, uneven variances)
+
+See also [M&R, section 10-2] ().
+Also called * Welch * key.
+
+I. * Assumptions *:
+Given two independent samples $ x_1, \ dotsc, x_n $ from and $ \ Normal {\ mu_1, \ sigma_1} $ and $ y_1, \ dotsc, y_m $ from a $ \ Normal {\ mu_2, \ sigma_2} $.
+The parameters $ \ sigma_1 $ and $ \ sigma_2 $ are unknown.
+
+II. * Greatness of interest *:
+Difference between $ \ Delta expectation values: = \ mu_1- \ mu_2 $.
+
+III. * Hypotheses *:
+
+Given $ \ Delta_0 \ in \ Real $.
+
+$$ H_0: \ Delta = \ Delta_0 \ qquad (\ text {or:} \ mu_1 = \ mu_2 + \ Delta_0) \,. $$
+$$ H_1: \ Delta \ not = \ Delta_0 \ qquad (\ text {or:} \ mu_1 \ not = \ mu_2 + \ Delta_0) \,. $$
+
+IV. * Test statistic *:
+
+We count under $ \ Delta = \ Delta_0 $.
+
+The partial variance estimators are
+$$
+  s_x ^ 2: = \ frac {1} {n-1} \ sum_ {i = 1} ^ n (x_i - \ Mean {x}) ^ 2
+  \ qquad \ text {en} \ qquad
+  s_y ^ 2: = \ frac {1} {m-1} \ sum_ {j = 1} ^ m (y_j - \ Mean {y}) ^ 2
+  \ ,.
+$$
+We are no longer allowed to pool the variance estimators.
+The test statistic is
+$$
+  t: = \ frac {(\ Mean {x} - \ mu_1) - (\ Mean {y} - \ mu_2)}
+   {\ sqrt {\ frac {s_x ^ 2} {n} + \ frac {x_y ^ 2} {m}}}
+  \ ,.
+$$
+
+The distribution of $ T $ is $ \ TDist {v} $. Compare this with the $ t $ key!
+The degrees of freedom are calculated by the following estimate:
+$$
+  v: = \ left \ lfloor \ frac {\ left (\ frac {s_x ^ 2} {n} + \ frac {s_y ^ 2} {m} \ right) ^ 2} {\ frac {s_x ^ 4} {n ^ 2 (n-1)} + \ frac {s_y ^ 4} {m ^ 2 (m-1)}} \ right \ rfloor
+  \ ,.
+$$
+The $ p $ value is
+$$
+  p: = \ Proba (T \ le- \ Modulus {t}) + \ Proba (T \ ge \ Modulus {t}) \ ,.
+$$
+
+V. * Decision *:
+Choose significance level $ \ alpha \ in [0,1] $.
+If $ p \ ge {} \ alpha $, then you must continue to accept $ H_0: \ mu_1 = \ mu_2 + \ Delta_0 $.
+If $ p \ le {} \ alpha $, you can reject $ H_0: \ mu_1 = \ mu_2 + \ Delta_0 $ and know that $ H_1: \ mu_1 \ not = \ mu_2 + \ Delta_0 $ at significance level $ \ alpha $ applies to.
+
+# Example independent t-test (two-sided, uneven variances)
+
+See [M&R, problem 10-28] ().
+
+`` `{r}
+sheets.weight <- load.mr.mnemonic ('M&R 10-28 paper weight in g')
+`` `
+`` `{r}
+str (sheets.weight)
+summary (sheets.weight)
+`` `
+`` `{r}
+attach (sheets.weight)
+`` `
+
+## Press normal distribution
+
+`` `{r}
+qq norm (sheet 1, asp = 1)
+qqline (sheet 1)
+qq norm (sheet.2, asp = 1)
+qqline (sheet.2)
+`` `
+
+Quantile-quantile graphs seem to be good.
+The horizontal location comes from a different expected value.
+
+
+`` `{r}
+shapiro.test (sheet.1)
+shapiro.test (sheet.2)
+`` `
+We are not allowed to reject "$ H_0: $ the sample is normally split" twice.
+
+## Tests
+
+We see a lower degree of freedom under the assumption of unequal variances.
+All two keys let us clearly reject $ H_0: \ mu_1 = \ mu_2 $.
+
+`` `{r}
+t.test (sheet 1, sheet 2, paired = F, var.equal = T, alternative = "two.sided", mu = 0)
+`` `
+`` `{r}
+t.test (sheet 1, sheet 2, paired = F, var.equal = FALSE, alternative = "two.sided", conf.level = 0.99, mu = 0)
+`` `

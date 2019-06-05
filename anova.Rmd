@@ -1,0 +1,195 @@
+---
+title: "Anova"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+ANOVA theory
+
+ANOVA stands for "ANalysis Of VAriance" or just variance analysis.
+
+There are several (i.e. more than two) groups and one wants to know if there is a difference between their expectation values. Consider a sort of independent $ t $ test with more than two samples.
+
+I. * Assumptions *:
+Given $ a $ independent samples, with, for $ i \ in \ Set {1, \ dotsc, a} $: $ x_ {i, 1}, \ dotsc, x_ {i, n_i} $ out and $ \ Normal { \ mu_i, \ sigma_i} $ distribution.
+All parameters are unknown.
+
+II. * Greatness of interest *:
+The expectation values ​​$ \ mu_i $, for $ i \ in \ Set {1, \ dotsc, a} $.
+
+III. * Hypotheses *:
+
+$$ H_0: \ mu_1 = \ dotso = \ mu_k \,. $$
+
+$$ H_1: \ exists {} \ Set {i, j} \ subseteq \ Set {1, \ dotsc, a}: \ mu_j \ not = \ mu_j \,. $$
+
+IV. * Test statistic *:
+
+Write $ (x_1, \ dotsc, x_n) $ for the association of all samples.
+
+The total squared sum is [M&R, (13-13)] ()
+$$
+  \ SumSquaresTotal: = \ sum_ {i = 1} ^ n (x_i - \ Mean {x}) \ ,.
+$$
+The empirical variance of sample is $ i $
+$$
+  \ SumSquares_ {i}: = \ sum_ {j = 1} ^ {n_i} (x_ {i, j} - \ Mean {x_ {i}})
+  \ qquad \ text {for} i \ in \ Set {1, \ dotsc, a}
+  \ ,.
+$$
+The _ inner variance_ [M&R, (13-14)] () or _ error term_ of the samples is
+$$
+  \ SumSquaresError: = \ sum_ {i = 1} ^ a \ SumSquares_ {i} \ ,.
+$$
+
+The _season variance_ [M&R, (13-15)] () or _model term_ of the samples is
+$$
+  \ SumSquaresModel: = \ sum_ {i = 1} ^ a n_i (\ Mean {x_i} - \ Mean {x}) ^ 2
+  \ ,.
+$$
+With the _ splitting of a sum of squares_ [M&R, (13-5) and (13-6)] () one rewrites $ \ SumSquaresTotal $.
+$$
+  \ SumSquaresModel = \ SumSquaresTotal - \ SumSquaresError
+  \ ,.
+$$
+
+The degrees of freedom are $ (n-1) $ for $ s ^ 2 $, $ (k-1) $ for $ \ SumSquaresError $ and $ (n-k) $ for $ \ SumSquaresModel $.
+The sample quantity is the ratio between these variances [M&R, (13-7)] ()
+$$
+  f: =
+  \ frac {\ frac {\ SumSquaresError} {k-1}} {\ frac {\ SumSquaresModel} {n-k}}
+  = \ frac {(n-k) \ SumSquaresError} {(k-1) \ SumSquaresModel}
+  \ ,.
+$$
+The distribution of $ F $ is $ \ FDist {k-1, n-k} $.
+
+V. * Decision *:
+
+Choose significance level $ \ alpha \ in [0,1] $.
+Under $ H_0 $, large values ​​of $ f $ are exceptional.
+So we have a right-hand-side test.
+So the $ p $ value is $ p: = \ Prob (F \ ge f) $, where $ F \ DistAs \ FDist {k-1, n-k} $.
+Note that in [M&R, Appendix A, Table VI] () there is $ n-k $ in the column and $ k-1 $ in the line.
+If $ p> \ alpha $, then you must continue to accept $ H_0 $.
+If $ p \ le \ alpha $, you can reject $ H_0: $ and you know that $ H_1 $ applies at the significance level $ \ alpha $.
+
+VI. * Confidence interval *:
+
+For a fixed level of reliability via the quantiles of the $ \ FDist {k-1, n-k} $ distribution.
+Note that in [M&R, Appendix A, Table VI] () there is $ k-1 $ in the column and $ n-k $ in the line.
+
+VII. *Good to know*:
+
+* There is a version for multiple paired / linked data. The degrees of freedom are going down.
+
+* Me can group with multiple factors. Then one gets hierachian splits from the sum of squares. See [M&R, Chapter 14] ().
+
+
+# ANOVA example
+
+`` `{r}
+seals <- load.mr.mnemonic ('M&R 13-46 carbon seal roughness')
+`` `
+
+`` `{r}
+summary (seals)
+`` `
+
+
+`` `{r}
+box plot (roughness ~ carbon.type, data = seals)
+`` `
+
+## Manual calculation
+
+`` `{r}
+sum squares <- function (x) {
+  m <- mean (x)
+  sk <- sum ((x - mean (x)) ^ 2)
+  return (sk)
+}
+sk <- sum. squares (seals $ roughness)
+sk.1 <- sum. squares (seals $ roughness [seals $ carbon.type == 'EC1'])
+sk.10 <- sum. squares (seals $ roughness [seals $ carbon.type == 'EC10'])
+sk.10A <- sum. squares (seals $ roughness [seals $ carbon.type == 'EC10A'])
+sk.4 <- sum. squares (seals $ roughness [seals $ carbon.type == 'EC4'])
+
+sks.i <- c (sk.1, sk.10, sk.10A, sk.4)
+names (sks.i) <- levels (seals $ carbon.type)
+sk.e <- sum (sks.i)
+sk.t <- sk - sk.e
+sks.all <- c (sk, sk.t, sk.e)
+names (sks.all) <- c ('ss', 'ss.t', 'ss.e')
+sks.all
+n <- length (seals $ roughness)
+n
+a <- length (levels (seals $ carbon.type))
+a
+f <- (sk.t / (a ​​- 1)) / (sk.e / (n - a))
+f
+p <- pf (f, a - 1, n - a, lower.tail = F)
+p
+`` `
+
+## Calculation with R
+
+`` `{r}
+fit <- aov (roughness ~ carbon.type, data = seals)
+`` `
+
+`` `{r}
+fit
+`` `
+
+
+`` `{r}
+summary (fit)
+`` `
+
+`` `{r}
+plot (fit)
+`` `
+
+# Which groups really differ
+
+Idea: independent $ t $ keys between all samples,
+
+`` `{r}
+box plot (roughness ~ carbon.type, data = seals)
+`` `
+
+We see a difference between `EC10` and the other three types, but not between the other three types.
+This at the same time at significant level $ \ alpha = 0.1 $.
+
+`` `{r}
+pwt <- pairwise.t.test (x = seals $ roughness, g = seals $ carbon.type, p.adjust.method = "holm", group.sd = F, paired = F, alternative = "two.sided" )
+pwt
+pwt $ p.value <= 0.1
+`` `
+
+If there is no correction of the $ p $ values, then one may see a difference between more groups than there actually is.
+
+`` `{r}
+pairwise.t.test (x = seals $ roughness, g = seals $ carbon.type, p.adjust.method = "none", group.sd = F, paired = F, alternative = "two.sided")
+`` `

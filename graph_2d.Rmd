@@ -1,0 +1,144 @@
+---
+title: "Graph 2d"
+author: "Rob van der Nagel"
+date: "12-3-19"
+header-includes:
+  - \input{lib/macros.tex}
+output:
+  html_notebook:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+    toc_float: true
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+
+# Graphs 2d
+
+Two-dimensional samples have two attributes for each individual.
+Example: height and weight of a person.
+A priori, these attributes are not independent.
+A graph gives an idea of ​​the structure of dependency between attributes.
+
+# Box plots with factors
+
+[M&R, section 6-4] ()
+
+`` `{r}
+n <- 500
+f <- factor (sample (unlist (strsplit ('ABCD', split = NULL)), size = n, replace = T))
+summary (f)
+x1 <- runif (n, -2, 2)
+x2 <- rexp (n, rate = 3)
+x3 <- rnorm (n, mean = -2, sd = 2)
+x4 <-1 + rf (n, 2, 8)
+x <- (f == 'A') * x1 + (f == 'B') * x2 + (f == 'C') * x3 + (f == 'D') * x4
+`` `
+`` `{r}
+plot (density (x), main = 'empirical probability densities')
+lines (density (x1), col = 'red')
+lines (density (x2), col = 'blue')
+lines (density (x3), col = 'green')
+lines (density (x4), col = 'orange')
+`` `
+`` `{r}
+box plot (x ~ f) # plot (x ~ f)
+`` `
+
+# Bar plot for weights
+
+`` `{r}
+pine.growth <- datasets :: Loblolly
+`` `
+`` `{r}
+str (pine.growth)
+summary (pine.growth)
+`` `
+`` `{r}
+table (pine.growth $ Seed)
+14 * 6 = 84
+`` `
+
+`` `{r}
+pine.yearly <-reshape (pine.growth,
+ v.names = "height",
+ timevar = "age",
+ idvar = "Seed",
+ direction = "wide")
+`` `
+`` `{r}
+pine.year
+`` `
+`` `{r}
+pine.year $ growth.3 <- pine.year $ height.3
+pine.year $ growth.3.5 <- pine.year $ height.5 - pine.year $ height.3
+pine.year $ growth.5.10 <- pine.year $ height.10 - pine.year $ height.5
+pine.year $ growth.10.15 <- pine.year $ height.15 - pine.year $ height.10
+pine.year $ growth.15.20 <- pine.year $ height.20 - pine.year $ height.15
+pine.year $ growth.20.25 <- pine.year $ height.25 - pine.year $ height.20
+`` `
+
+`` `{r}
+t (pine annual [, 8: 13])
+barplot (t (pine yearly [, 8: 13]), ylab = "Height", xlab = "Seed", names.arg = pine annual € Seed, cex.names = 0.7,)
+`` `
+
+# Scatter plot
+
+[M&R, section 6-6] ()
+
+`` `{r}
+sp.onaf <- data.frame (x = rnorm (1000, sd = 2), y = rnorm (1000, sd = 2))
+`` `
+
+`` `{r}
+plot (unfounded)
+`` `
+
+Regression with box plots on both axes:
+`` `{r}
+library ("car")
+car :: scatterplot (sp.onaf $ x, sp.onaf $ y)
+`` `
+
+`` `{r}
+library ("car")
+x <- runif (100, 0, 1)
+y <- x ^ 2 + rnorm (100, 0, 0.01)
+car :: scatter plot (x, y)
+`` `
+
+# Binplot or 2D histogram
+
+[web] (https://www.r-bloggers.com/5-ways-to-do-2d-histograms-in-r/)
+
+Binplot
+`` `{r}
+library (ggplot2)
+ggplot2 :: qplot (x, y, data = sp.onaf, geom = 'bin2d')
+`` `
+Hexbin plot
+`` `{r}
+library (hexbin)
+h <- hexbin :: hexbin (sp.onaf)
+plot (h)
+`` `
+
+# Scatter plot higher dimensions
+
+Handy to get a global overview.
+`` `{r}
+pairs (pine.yearly [, 2: 7])
+`` `

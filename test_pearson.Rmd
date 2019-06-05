@@ -1,0 +1,238 @@
+---
+title: "Pearson test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float: true
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Pearson key
+
+Problem: Sample from discrete distribution. Does this sample come from a given probability distribution $ P $? This is an adjustment test.
+
+## Theory
+
+We follow the 7 steps in [M&R, section 9-1.6] ().
+Contents of [M&R, section 9-7] ().
+
+0. * Assumptions *:
+$ P $ is a probability distribution on $ \ Set {1, \ dotsc, l} $. Data $ x_1, \ dotsc, x_n $ is a sample of i.i.d. $ P $ distributed probability variables.
+
+1. * Parameter of interest *: Distribution $ P $.
+
+2. * Null hypothesis *:
+For a fixed probability distribution $ P_0 $:
+$$ H_0: P = P_0
+
+3. * Alternative hypothesis *:
+$$ H_1: P \ not = P_0 \
+
+4. * Test variable *:
+
+The * empirical frequency * counts how many data are in each course:
+$$
+  f:
+  \ qquad
+  \ Set {1, \ dotsc, l} \ to \ Nat
+  \ qquad
+  i \ mapsto {} \ Cardinality {\ Set {1 \ le j \ le n \ mid x_j = i}}
+  \ ,.
+$$
+The * theoretical frequency * counts how much data we expect in each course:
+$$
+  F_0:
+  \ qquad
+  \ Set {1, \ dotsc, l} \ to \ Nat
+  \ qquad
+  i \ mapsto {} nP_0 (i)
+  \ ,.
+$$
+We compare the empirical with the theoretical frequency.
+The test statistic is
+$$
+  k ^ 2: = \ sum_ {i = 1} ^ n \ frac {(f (i) -F_0 (i)) ^ 2} {F_0 (i)}
+  \ ,.
+$$
+That is a kind of $ 1 ^ 2 $ norm (euclicidic distance) between $ f $ and $ F_0 $.
+For sufficiently large $ n $, $ K ^ 2 $ has a $ \ ChiSquare {l-1} $ - distribution.
+This is a consequence of the central limit.
+In practice, the central limit theorem requires that $ F_0 (i) $ should not be too small (rule of thumb: $ F_0 {} \ ge 5 $ for each course).
+Otherwise, courses (= values) must be summarized.
+The parameter is $ n-1 $, because $ f (l) = n - \ sum_ {i = 1} ^ {l-1} f (i) $ eliminates a degree of freedom.
+If parameters are needed for $ P_0 $, then a further degree of freedom is deducted for each parameter.
+
+5. * Decision *:
+Choose a significance level $ \ alpha \ in [0,1] $.
+Reject $ H_0 $ as the $ p $ value $ \ le \ alpha $.
+
+6. * Calculation *:
+If $ K ^ 2 \ DistAs \ ChiSquare {k-1} $, the $ p $ value is calculated by
+$$ p: = \ Proba (k ^ 2 \ le K ^ 2) \,. $$
+See also [M&R, Appendix A, Table IV] ().
+
+7. * Conclusion *:
+If $ p \ ge {} \ alpha $, then you must continue to accept $ H_0 $.
+If $ p \ le {} \ alpha $, you can reject $ H_0 $.
+
+## Data
+
+We simulate 100 throws of a die.
+`` `{r}
+n <- 100
+1 <- 6
+throws <- sample (1: l, size = n, replace = T)
+`` `
+`` `{r}
+freq.emp <- table (throws)
+freq.emp
+bar plot (freq.emp)
+`` `
+`` `{r}
+freq.theo <- rep (n / l, l)
+bar plot (freq.emp)
+lines (c (0, 1 + 1), c (n / l, n / l), col = 'red')
+`` `
+
+## Manual
+
+`` `{r}
+all (freq.theo> = 5)
+degrees of freedom <- 1 - 1
+k.quared <- sum ((freq.emp - freq.theo) ^ 2 / freq.theo)
+squared
+p.value <- pchisq (k.quartered, df = degrees of freedom, lower.tail = F)
+p.value
+`` `
+`` `{r}
+alpha <- 0.1
+p.value <= alpha
+`` `
+
+_Conclusion_: We must continue to assume that the dice was fair.
+
+## Calculation with R
+
+Do not forget the `p =` and the option `rescale.p = T`.
+Otherwise it becomes a different test which we will do later.
+`` `{r}
+chisq.test (freq.emp, p = freq.theo, rescale.p = T)
+`` `
+\ # With parameter estimate
+
+
+`` `{r}
+sample <- load.mr.mnemonic ('M&R 9-101 vehicle count / minute frequencies')
+str (sample)
+summary (sample)
+sample
+hist (sample $ count)
+plot (sample)
+`` `
+Because the `count` all added data in boxes, its sum counts the size of the sample (we have not seen this data!).
+`` `{r}
+n <- sum (sample $ count)
+`` `
+The average must be calculated per hand, because we only have a sample of the sample.
+`` `{r}
+m <- sum (sample $ vehicles * sample $ count) / n
+m
+plot (0: 100, dpois (0: 100, lambda = m) * n)
+points (sample $ vehicles, sample $ count, col = 'red')
+`` `
+
+`` `{r}
+vehicles.range <- range (sample $ vehicles)
+vehicles.range
+boxes <- vehicles.range [1]: vehicles.range [2]
+dpois (boxes, lambda = m) * n> = 5
+sum (dpois (boxes, lambda = m))
+`` `
+
+The problem: only `r sum (dpois (courses, lambda = m))` of the theoretical probability lies in these courses.
+`` `{r}
+ppois (min (boxes) - 1, lambda = m)
+ppois (max (boxes), lambda = m, lower.tail = F)
+`` `
+
+We create a new course on the left and add it to the last on the right.
+```{r}
+compartments.groter <- (vehicles.range [1] -1) :( vehicles.range [2])
+k <- length (subjects.larger)
+freq.theo.groter <- n * c (
+  ppois (min (boxes) - 1, lambda = m)
+  , dpois (boxes, lambda = m)
+)
+l <- length (boxes)
+freq.theo.groter [l + 1] <- freq.theo.groter [l + 1] + ppois (max (subjects.groter), lambda = m, lower.tail = F)
+freq.emp.groter <- c (0, sample $ count)
+`` `
+
+Check whether new courses are good.
+`` `{r}
+all (freq.theo.groter> = 5)
+`` `
+`` `{r}
+chi.kwadraat <- sum ((freq.emp.groter - freq.theo.groter) ^ 2 / freq.theo.groter)
+chi. squared
+p.value <- pchisq (chi. square, df = k - 1 - 1, lower.tail = F)
+p.value
+`` `
+
+_Conclusion_: We can reject that this was a $ \ Poisson {`r m`} $ distribution.
+
+# Continuous distributions
+
+A perfect sample disturbed by a small Gaussian noise.
+`` `{r}
+n = 1000
+x <- rgamma (n, shape = 10, scale = 3) + rnorm (n, mean = 0, sd = .1)
+`` `
+`` `{r}
+h <- hist (x)
+h
+`` `
+The histogram already divides the data into sections.
+Handy to use.
+`` `{r}
+str (h)
+`` `
+The extra $ 0 $ and $ 1 $ for the vectors are for the odds in the left and right boxes.
+`` `{r}
+k <- length (h $ counts)
+k
+proba.midbreaks <- pgamma (h $ breaks [2: k], shape = 10, scale = 3)
+proba.theo <- c (proba.midbreaks, 1) - c (0, proba.midbreaks)
+freq.theo <- n * proba.theo
+`` `
+The midpoints `h $ mids` we have the grace of the histogram.
+`` `{r}
+plot (h $ mids, freq.theo)
+points (h $ mids, h $ counts, col = 'red')
+`` `
+The test.
+`` `{r}
+chisq.test (h $ counts, p = freq.theo, rescale.p = T)
+`` `
+There is a warning.
+We check and, yes, three courses do not meet the requirements.
+`` `{r}
+freq.theo> = 5
+`` `

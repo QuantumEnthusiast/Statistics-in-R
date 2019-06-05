@@ -1,0 +1,205 @@
+---
+title: "Kwantiel-kwantiel grafieken"
+author: "Rob van der Nagel"
+date: "19-3-2019"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Quantils
+
+For data $ x_1, \ dotsc, x_n $ and $ p \ in [0,1] $, the * empirical $ p $ quantile * is the number $ q_p $ so that $ p $% of the $ n $ data is less than or equal than $ q_p $.
+
+`` `{r}
+solar <- load.mr.mnemonic ('M&R 6-12 solar intensity Spain')
+p <- runif (1, min = 0, max = 1)
+q <- quantile (solar, p)
+dotchart (solar, main = sprintf ('Sun intensity with% f-quantile =% f', p, q))
+lines (c (q, q), c (0, length (solar) + 1), col = 'red')
+`` `
+
+Of a continuous division $ P $ and $ p \ in [0,1] $, the * theoretical $ p $ quantile * is the number $ q_p $ so that $ P (q_p) = p $.
+Or vice versa, a $ P $ divided random $ X $ meets $ P (X \ le q_p) = p $.
+
+`` `{r}
+k <- 7
+p <- runif (1, min = 0, max = 1)
+q <- qchisq (p, df = k)
+plot.domain <- seq (0, 20, length.out = 500)
+plot (plot.domain, pchisq (plot.domain, df = k)
+   , type = '1', ylim = c (0.1)
+   , main = sprintf ('Chi-squared (% i) with% f-quantile =% f', k, p, q)
+   , xlab = "values", ylab = "chance"
+   )
+polygon (c (min (plot.domain), plot.domain, max (plot.domain))
+      , c (0, dchisq (plot.domain, df = k), 0)
+      , col = "orange", border = NA
+      )
+lines (c (q, q), c (0, 1), col = 'red')
+lines (c (0, 20), c (p, p), col = 'green')
+`` `
+
+# Quantile-quantile graphs
+
+Idea: plot two sets of quantiles against each other.
+If the quantiles come from the same distribution, this would give a straight line.
+See also [M&R, section 6-7] ().
+
+`` `{r}
+n <- 50
+a <-1
+b <- 2
+`` `
+`` `{r}
+x <- runif (n, min = a, max = b)
+y <- runif (2 * n, min = a, max = b)
+`` `
+
+Classical: plot twice the empirical probability density function.
+`` `{r}
+plot (density (x, from = a, to = b), ylim = c (0, 0.5), main = 'Empirical probability density functions')
+lines (density (y, from = a, to = b), col = 'red')
+`` `
+
+Manual quantile-quantile plot.
+Calculate the quantiles of each data series.
+`` `{r}
+x.quant <- quantile (x, probs = (1: 100) / 100)
+y.kwant <- quantile (y, probs = (1: 100) / 100)
+plot (x.kwant, y.kwant, type = 'p')
+`` `
+
+Better graph. The option `asp = 1` is important to keep the scale of the axes the same.
+The red line is the first median ($ y = x $).
+`` `{r}
+plot (x.quant, y.quant, type = 'p', xlim = c (a, b), ylim = c (a, b), asp = 1)
+lines (c (a, b), c (a, b), col = 'red')
+`` `
+
+
+Via R. The option `asp = 1` is important to keep the scale of the axes the same.
+The red line is the first median ($ y = x $).
+`` `{r}
+qqplot (x, y, asp = 1)
+lines (c (a, b), c (a, b), col = 'red')
+`` `
+
+## Data vs data
+
+`` `{r}
+n <- 250
+`` `
+
+`` `{r}
+x1 <- rexp (n, rate = 1/3)
+x2 <- rexp (2 * n, rate = 1/3) + 2
+x3 <- 2 * x1
+x4 <- x1 ^ 2
+`` `
+
+What do the probability density functions look like and what would be the effect on the quantile-quantile plots?
+
+`` `{r}
+qq plot (x1, x2, asp = 1)
+domain <- range (c (x1, x2))
+lines (domain, domain, col = 'red')
+`` `
+
+Add fixed values ​​= another straight line with slope $ 1 $.
+
+`` `{r}
+qq plot (x1, x3, asp = 1)
+domain <- range (c (x1, x3))
+lines (domain, domain, col = 'red')
+`` `
+
+With factor scales = another straight line with factor as slope.
+
+`` `{r}
+qq plot (x2, x3, asp = 1)
+domain <- range (c (x2, x3))
+lines (domain, domain, col = 'red')
+`` `
+
+Scale and move = linear transformation = other straight line with scale factor as slope.
+
+`` `{r}
+qq plot (x1, x4, asp = 1)
+domain <- range (c (x1, x4))
+lines (domain, domain, col = 'red')
+`` `
+
+Squaring has made small values ​​in $ [0,1] $ smaller and values ​​above $ 1 $ even greater.
+So the point cloud is pulled apart.
+But analysis is no longer possible.
+
+## Data vs distribution
+
+Instead of a sample, you can also use theoretical quantiles.
+`` `{r}
+n <- 111
+x <- rpois (n, lambda = 2)
+x.kwant <- quantile (x, probs = (1:50) / 50)
+t.quant <- qpois ((1:50) / 50, lambda = 2)
+plot (x.kwant, t.kwant, asp = 1)
+lines (c (0, 10), c (0, 10), col = 'red')
+`` `
+
+Here you can also see the effect of a discrete distribution, because $ \ Poisson {2} $ - distributed randomists only take values ​​in $ \ Nat $.
+
+## Normal distribution
+
+We estimate the parameters of the distribution from the sample.
+`` `{r}
+n <- 121
+m <- 2
+s <- 3
+x <- rnorm (n, mean = m, sd = s)
+`` `
+`` `{r}
+x.quant <- quantile (x, probs = (1: 100) / 100)
+t.kwant <- qnorm ((1: 100) / 100, mean = mean (x), sd = sd (x))
+plot (x.kwant, t.kwant, asp = 1)
+dom <- range (x.quant)
+lines (stupid, stupid, col = 'red')
+`` `
+
+Because this is so important, it has its own command "qqnorm".
+Here is the comparison with a standard normal, so the slope is not $ 1 $, but $ `rs` $.
+The `qqline` command draws the slope of the normal distribution with the estimated parameters. With `asp = 1` you can visually get an idea of ​​the parameters` m` (location) and `s` (standard deviation).
+`` `{r}
+qq norm (x, asp = 1)
+qqline (x)
+`` `
+
+Finally, if you do not have a normal distribution, you will see a deviation in the start (s) of the quantiles.
+So for quantiles to $ 0 $ and / or $ 1 $.
+Example: Plot $ \ Exponential {1/2} $ - divided sample against $ \ Normal {2, \ sqrt {2}} $ - distribution.
+`` `{r}
+x <- rexp (1234, rate = 1/2)
+list (mean = mean (x), stddev = sd (x))
+qq norm (x, asp = 1)
+qqline (x)
+`` `
+
+With small quantiles it can be seen that the sample does not become negative, but a normal distribution also has a negative carrier.
+With large quantiles, it can be seen that the sample drops more slowly (with $ e ^ {- x} $) than a normal distribution (with $ e ^ {- x ^ 2}).

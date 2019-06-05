@@ -1,0 +1,58 @@
+---
+title: "General test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+# 10 steps
+
+The 10 steps in [M&R, section 9-1.6] ().
+
+0. * Assumptions *:
+
+1. * Parameter of interest *:
+
+3. * Alternative hypothesis *:
+
+4. * Test variable *:
+
+5. * Decision *:
+
+6. * Calculation *:
+
+7. * Conclusion *:
+
+8. * Confidence interval *:
+
+9. * Power *:
+
+# 6 steps (sic)
+
+I. * Assumptions *:
+
+II. * Greatness of interest *:
+
+III. * Hypotheses *:
+
+IV. * Test statistic *:
+
+V. * Decision *:
+
+VI. * Confidence interval *:
+
+
+

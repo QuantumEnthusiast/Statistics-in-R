@@ -1,0 +1,292 @@
+---
+title: "Multilinear Regression: example"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Data
+
+Data from [M&R, Table 12E-8] ().
+
+`` `{r}
+df <- load.mr.mnemonic ('M&R 12E-8 arsenic')
+`` `
+
+`` `{r}
+str (df)
+summary (df)
+`` `
+
+# Model, estimate, forecast [M&R, problem 12-12] ()
+
+## a
+
+`` `{r}
+o12.lm <- lm (arsenic.nails ~ age + use.drinking + use.cooking + arsenic.water, data = df)
+o12.sum <- summary (o12.lm)
+o12.sum
+`` `
+
+## b
+
+`` `{r}
+o12.r2 <- o12.sum $ r.squared
+o12.r2
+o12.sigma2 <- o12.sum $ sigma ^ 2
+o12.sigma2
+`` `
+
+## c
+
+`` `{r}
+predict (o12.lm, data.frame (age = 55, use.drinking = 5, use.cooking = 5, arsenic.water = 0.625))
+`` `
+
+That is the prediction.
+
+# Hypothesis tests [M&R, exercise 12-30] ()
+
+`` `{r}
+o30.lm <- lm (arsenic.nails ~ age + use.drinking + use.cooking, data = df)
+o30.sum <- summary (o30.lm)
+o30.sum
+`` `
+
+`` `{r}
+o30.alpha <- 0.01
+`` `
+
+## a
+
+`` `{r}
+o30.f <- o30.sum $ fstatistic
+o30.f
+o30.f.p <- pf (q = o30.f [1], df1 = o30.f [2], df2 = o30.f [3], lower.tail = F)
+o30.f.p
+o30.f.p <= o30.alpha
+`` `
+
+Conclusion: Model not significantly different from the zero model.
+
+## b
+
+`` `{r}
+o30.t <- as.data.frame (o30.sum $ coefficients)
+o30.t $ sig <- o30.t $ `Pr (> | t |)` <= o30.alpha
+o30.t
+`` `
+
+Conclusion: no coefficient significantly different from $ 0 $.
+
+# Confidence intervals [M&R, problem 12-48] ()
+
+`` `{r}
+o48.lm <- lm (arsenic.nails ~ age + use.drinking + use.cooking, data = df)
+o48.lm
+`` `
+
+## a
+
+`` `{r}
+confint (o48.lm)
+`` `
+
+## b
+
+`` `{r}
+predict (o48.lm, data.frame (age = 55, use.drinking = 4, use.cooking = 4)
+      , interval = 'confidence', level = 0.99) [2: 3]
+`` `
+
+It is a mistake of the model and not of the calculation that we get a negative lower limit for the "expectation value" of "arsenic.nails".
+
+## c
+
+`` `{r}
+predict (o48.lm, data.frame (age = 55, use.drinking = 4, use.cooking = 4)
+      , interval = 'prediction', level = 0.99) [2: 3]
+
+`` `
+
+It is a mistake of the model and not of the calculation that we get a negative lower limit for the _value_ of `arsenic.nails`.
+
+# Variance analysis [M&R, problem 12-62] ()
+
+`` `{r}
+o62.lm <- lm (arsenic.nails ~ age + use.drinking + use.cooking, data = df)
+o62.lm
+`` `
+
+## a
+
+`` `{r}
+o62.sum <- summary (o62.lm)
+o62.sum $ r.squared
+`` `
+Only $ 12 $%! Unusable model.
+
+## b
+
+`` `{r}
+qqnorm (o62.lm $ residuals)
+qqline (o62.lm $ residuals)
+`` `
+That looks very bad.
+Fortunately it is more a problem with the different scales of the axes.
+
+`` `{r}
+qqnorm (o62.lm $ residuals, asp = 1)
+qqline (o62.lm $ residuals)
+`` `
+
+## c
+
+Mmh, the error appears to be smaller with larger values, except for an outlier.
+So maybe there is a $ \ sqrt {.} $ Transformation on the left?
+
+`` `{r}
+plot (o62.lm $ fitted.values, o62.lm $ residuals)
+lines (lowess (o62.lm $ fitted.values, o62.lm $ residuals), col = 'red')
+`` `
+
+Because of the linear structure, we see the same image.
+
+`` `{r}
+plot (df $ age, o62.lm $ residuals)
+lines (lowess (df $ age, o62.lm $ residuals), col = 'red')
+`` `
+
+Here another picture twice, because the variables `use.drinking` and` use.cooking` are cut off. Error increases with these variables, so draw a quadratic term on the right before use.
+
+`` `{r}
+plot (df $ use.drinking, o62.lm $ residuals)
+lines (lowess (df $ use.drinking, o62.lm $ residuals), col = 'red')
+`` `
+
+`` `{r}
+plot (df $ use.cooking, df $ age)
+lines (lowess (df $ use.cooking, o62.lm $ residuals), col = 'red')
+`` `
+
+## d
+
+`` `{r}
+o62.cook <- cooks.distance (o62.lm)
+summary (o62.cook)
+hist (o62.cook)
+which (o62.cook> = 1)
+`` `
+Point $ 14 $ has extraordinary influence.
+
+# Model selection [M&R, problem 12-88] ()
+
+`` `{r}
+o62.lm.full <- lm (arsenic.nails ~ age + use.drinking + use.cooking, data = df)
+`` `
+
+## a
+`` `{r}
+o62.formula <- function (selection) {
+  cols <- c ('age', 'use.drinking', 'use.cooking') [selection]
+  rhs <- paste (cols, collapse = '+')
+  if (length (cols) == 0) {
+    rhs <- "1"
+  }
+  return (paste ('arsenic.nails ~', rhs))
+}
+o62.lm.r2a <- function (f) {
+  m <- lm (as.formula (f), data = df)
+  r2a <- summary (m) $ adj.r.squared
+  return (r2a)
+}
+`` `
+
+`` `{r}
+o62.a <- list ()
+for (n in 0: 3) {
+  combs <- combn (3, n)
+  # print (combs)
+  for (i in 1: choose (3, n)) {
+    comb <- combs [, i]
+    f <- o62.formula (comb)
+    r2a <- o62.lm.r2a (f)
+    o62.a [[as.character (f)]] <- r2a
+  }
+}
+data.frame (model = names (o62.a)
+         , r2a = unname (unlist (o62.a))
+)
+o62.a [which (o62.a == max (unlist (o62.a)))]
+`` `
+
+## b
+
+See c and d.
+
+## c
+
+With "backward" we arrive at the model with only "age".
+
+`` `{r}
+o88.c <- step (o62.lm.full, direction = "backward")
+o88.c
+`` `
+
+## d
+
+With "forward" we arrive at the model with only "age".
+
+`` `{r}
+o88.d <- step (lm (arsenic.nails ~ 1, data = df), direction = "forward"
+            , scope = ~ age + use.drinking + use.cooking)
+o88.d
+`` `
+## e
+
+Clear `arsenic.nails ~ age`. But because it has a $ R ^ 2_ {adj} $ of $ 7 $%, it is really insufficient.
+
+`` `{r}
+summary (lm (arsenic.nails ~ age, data = df))
+`` `
+
+## f
+
+Adding 'gender' does not change anything. It remains the same bad model.
+
+`` `{r}
+o88.f <- step (lm (arsenic.nails ~ 1, data = df), direction = "forward"
+            , scope = ~ age + use.drinking + use.cooking + gender)
+summary (o88.f)
+anova (o88.f)
+`` `
+
+However, there must be `arsenic.water`.
+And interactions are not important.
+
+`` `{r}
+o88.f <- step (lm (arsenic.nails ~., data = df), direction = "backward", trace = 0)
+summary (o88.f)
+anova (o88.f)
+anova (lm (arsenic.nails ~., data = df), lm (arsenic.nails ~. ^ 2, data = df))
+`` `

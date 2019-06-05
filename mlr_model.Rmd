@@ -1,0 +1,218 @@
+---
+title: "Multilinear Regression: model"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Data
+
+See [M&R, Table 12E-3] ().
+`` `{r}
+cars.df <- load.mr.mnemonic ('M&R 12E-3 Daimler 2005 cars')
+`` `
+`` `{r}
+str (cars.df)
+`` `
+
+# Ad hoc terms
+
+Create new columns quickly with `I (.)`. `I` may contain any expression that produces a vector of the correct length.
+
+`` `{r}
+cars.lm.1 <- lm (range ~ horsepower + weight + I (weight ^ 2) + I (weight * horsepower), data = cars.df)
+summary (cars.lm.1)
+`` `
+Resize weight in kilograms to tons. The $ t $ keys change, but not the ANOVA.
+
+`` `{r}
+cars.lm.2 <- lm (range ~ horsepower + I (weight / 1000) + I (weight ^ 2/10 ^ 6) + I (weight / 1000 * horsepower), data = cars.df)
+summary (cars.lm.2)
+anova (cars.lm.2)
+`` `
+
+# Factors
+
+`` `{r}
+summary (cars.df $ transmission)
+`` `
+
+Virtual columns are created for a `factor` (nominal measurement level). Exactly one less than the number of labels in the factor. The `(Intercept)` represents the first label, and the columns indicate the difference with respect to this first label.
+
+
+`` `{r}
+cars.lm.3 <- lm (range ~ transmission, data = cars.df)
+cars.coeff.3 <- coefficients (cars.lm.3)
+summary (cars.lm.3)
+anova (cars.lm.3)
+`` `
+Model 3 regression comparison:
+$$
+ \ text {range}
+  = \ begin {cases}
+   `r sprintf ("%. 2f ", cars.coeff.3 [1])` + E
+   & \ text {if transmission = L4,}
+   \\
+   `r sprintf ("%. 2f ", cars.coeff.3 [1] + cars.coeff.3 [2])` + E
+   & \ text {if transmission = L5,}
+   \\
+   `r sprintf ("%. 2f ", cars.coeff.3 [1] + cars.coeff.3 [3])` + E
+   & \ text {if transmission = M6.}
+  \ end {cases}
+$$
+Here is the $ E \ DistAs \ Normal {0, \ sigma} $ error.
+This is different from first dividing the data into three groups (according to `transmission`) and building three models.
+`` `{r}
+cars.lm.3.L4 <- lm (range ~ 1, data = cars.df [cars.df $ transmission == 'L4',])
+cars.lm.2.L5 <- lm (range ~ 1, data = cars.df [cars.df $ transmission == 'L5',])
+cars.lm.2.M6 <- lm (range ~ 1, data = cars.df [cars.df $ transmission == 'M6',])
+`` `
+
+$$
+  \ text {range}
+  = \ begin {cases}
+   `r sprintf ("%. 2f ", coefficients (cars.lm.3.L4) [1])` + E_ {L4}
+   & \ text {if transmission = L4,}
+   \\
+   `r sprintf ("%. 2f ", coefficients (cars.lm.2.L5) [1])` + E_ {L5}
+   & \ text {if transmission = L5,}
+   \\
+   `r sprintf ("%. 2f ", coefficients (cars.lm.2.M6) [1])` + E_ {M6}
+   & \ text {if transmission = M6.}
+  \ end {cases}
+$$
+Because here is $ E_ {L4} \ DistAs \ Normal {0, \ sigma_ {L4}} $, $ E_ {L5} \ DistAs \ Normal {0, \ sigma_ {L5}} $ and $ E_ {M6} \ DistAs \ Normal {0, \ sigma_ {M6}} $. So more leeway in the error structure.
+
+The ANOVA shows that these virtual columns come as a package (here loss of two degrees of freedom).
+There is a direct link between `cars.lm.3` and the ANOVA test on several independent samples in` cars.aov`.
+`` `{r}
+anova (cars.lm.3)
+`` `
+`` `{r}
+cars.aov <- aov (cars.df $ range ~ cars.df $ transmission)
+cars.aov
+summary (cars.aov)
+`` `
+
+What do the virtual columns look like now? You can build this by hand.
+The problem is that here the two columns in the ANOVA are considered independent of each other.
+
+`` `{r}
+cars.lm.4 <- lm (range ~ I (transmission == 'L5') + I (transmission == 'M6'), data = cars.df)
+summary (cars.lm.4)
+anova (cars.lm.4)
+`` `
+
+# Algebra of models in R
+
+Overview of used expressions in the algebra for multilinear models in `R`:
+
+* `+` adds a new term
+* `:` interaction term:
+     * interval measurement level: product of variables
+     * nominal measurement level: fall distinction with virtual variables
+     * `a: b` or` b: a` pair interaction between `a` and` b`
+     * `a: b: c` triple interaction between` a`, `b` and` c` (all sequences possible)
+* `*` all interactions (up to and including order of product)
+* `-` removes a term
+* `()` sub-model within brackets
+* `^ 2` all pair interactions (often in combination with` () `)
+* `1` the constant variable
+* `.` stands for all variables
+
+## Interaction with a factor
+
+`` `{r}
+cars.lm.5 <- lm (range ~ horsepower + transmission + transmission: horsepower, data = cars.df)
+cars.coeff.5 <- coefficients (cars.lm.5)
+summary (cars.lm.5)
+`` `
+
+This model is
+
+$$
+  \ text {range}
+  = \ begin {cases}
+   `r sprintf ("%. 2f ", cars.coeff.5 [1])`
+   + `r sprintf ("%. 2f ", cars.coeff.5 [2])`
+     \ times \ text {horsepower}
+   + E
+   & \ text {if transmission = L4,}
+   \\
+   `r sprintf ("%. 2f ", cars.coeff.5 [1] + cars.coeff.5 [3])`
+   + `r sprintf ("%. 2f ", cars.coeff.5 [2] + cars.coeff.5 [5])`
+     \ times \ text {horsepower}
+   + E
+   & \ text {if transmission = L5,}
+   \\
+   `r sprintf ("%. 2f ", cars.coeff.5 [1] + cars.coeff.5 [4])`
+   + `r sprintf ("%. 2f ", cars.coeff.5 [2] + cars.coeff.5 [6])`
+     \ times \ text {horsepower}
+   + E
+   & \ text {if transmission = M6.}
+  \ end {cases}
+$$
+Again the error always has the same variance: $ E \ DistAs \ Normal {0, \ sigma} $.
+
+Alternative spelling:
+`` `{r}
+summary (lm (range ~ horsepower * transmission, data = cars.df))
+`` `
+
+Without offsets for `transmission`, but always with offsets for` horsepower: transmission`. Beware, dangerous, if you don't know exactly what the linear algebra is going to do behind.
+`` `{r}
+summary (lm (range ~ horsepower * transmission - 1, data = cars.df))
+`` `
+
+## Other examples
+
+Here the first order terms and the pair interactions can be seen.
+The term `horsepower: displacement` is here the product between the two variables (not a factor).
+`` `{r}
+cars.lm.7 <- lm (range ~ (horsepower + displacement + weight) ^ 2, data = cars.df)
+summary (cars.lm.7)
+`` `
+
+Here the triple interactions `horsepower: displacement: weight` is also present, but one of the three pair interactions,` displacement: weight`, has been removed.
+`` `{r}
+summary (lm (range ~ horsepower * displacement * weight - displacement: weight, data = cars.df))
+`` `
+
+## Extreme models
+
+The zero model:
+`` `{r}
+summary (lm (range ~ 1, data = cars.df))
+`` `
+
+A fixed full model without interactions.
+
+* `carline` is unique per line.
+* `manifacturer.code` is constantly $ 20 $.
+* `overdrive.code` is constantly $ 2 $.
+* `air conditioning` is constantly` TRUE`.
+
+So these variables are erased or in the model with `NAs' because there is no difference with` (Intercept) `.
+`` `{r}
+summary (lm (range ~. - carline - manifacturer.code - overdrive.code, data = cars.df))
+`` `

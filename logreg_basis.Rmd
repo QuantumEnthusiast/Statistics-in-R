@@ -1,0 +1,184 @@
+---
+title: "Logistic Regression: basis"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# The logistic transformation
+
+See [M&R, 11-10] ().
+
+$$ \ Logit: \ qquad [0,1] \ to [- \ infty, \ infty] \ qquad p \ mapsto \ log \ left (\ frac {p} {1-p} \ right) \,. $$
+The function is continuous, also in the border points with $ \ Logit (0) = - \ infty $ and $ \ Logit (1) = \ infty $.
+`` `{r}
+logit <- function (x) {return (log (x / (1 - x)))}
+plot (logit, 0, 1, main = "Graph logit function")
+`` `
+
+Because $ \ Logit $ is also strictly monotonically rising, there is an inverse.
+$$ \ operatorname {logit} ^ {- 1}: \ qquad [- \ infty, \ infty] \ to [0,1] \ qquad x \ mapsto \ frac {e ^ x} {1 + e ^ x} \ $$
+`` `{r}
+logit.inv <- function (x) {return (exp (x) / (1 + exp (x)))}
+plot (logit.inv, -10, 10, main = "Graph inverse logit function")
+`` `
+
+Other functions with the same properties are the $ \ tan $ and $ \ Arctan $ with a shift or the probability distribution function of a standard normal distribution $ \ SNDF $ and its inverse, the quantile function of a standard normal distribution. In general, the probability distribution function of any probability distribution with a probability density function with carrier $ \ RR $ has similar properties.
+
+# Theory simple logistic regression
+
+See [M&R, section 11-10] ().
+
+The model is $ Y $ for stochasts with a $ \ Bernoulli {p} $ distribution.
+We cannot model $ Y $ directly, but only its conditional expectation:
+$$
+  \ Logit (\ Expect (Y | X = x))
+  = \ beta_0 + \ beta_1 x
+  \ ,.
+$$
+Or vice versa
+$$
+  \ Expect (Y | X = x)
+  = \ Proba (Y = 1 | X = x)
+  = \ Logit ^ {- 1} (\ beta_0 + \ beta_1 x)
+  = \ frac {1} {1 + e ^ {- \ beta_0 - \ beta_1 x}}
+  \ ,.
+$$
+In terms of the _ chance ratio_, this is [M&R, (11-54)] ().
+$$
+  \ frac {\ Proba (Y = 1 | X = x)} {\ Proba (Y = 0 | X = x)}
+  = \ frac {\ Expect (Y | X = x)} {1- \ Expect (Y | X = x)}
+  = \ exp (\ beta_0 + \ beta_1 x)
+  \ ,.
+$$
+
+The goal is to estimate $ \ beta $.
+
+Until here there was no explicit error term. The error can no longer be distributed normally.
+Suppose $ U $ is a randomized $ X $ independent $ \ Unif {[0,1]} $.
+One can write $ Y $ as follows:
+$$
+  Y =
+  \ begin {cases}
+    1
+   & \ text {provided} U \ ge \ frac {1} {1 + e ^ {- \ beta_0 - \ beta_1 x}} \ ,,
+   \\
+   0
+   & \ text {provided} You <\ frac {1} {1 + e ^ {- \ beta_0 - \ beta_1 x}} \ ,.
+  \ end {cases}
+$$
+If you describe this, you will see that the $ \ Logit ^ {1} (U) $ error follows a logistic distribution.
+
+The * deviance * or * deviation * is a generalization of the least squares residues.
+This describes how well the model predicts the data.
+The deviance is linked to a hypothesis test.
+They want a small deviance.
+
+The * AIC * (* Akaike information criterion *) comes from the information theory and calculates a relative entropy weight with the number of estimated parameters.
+The AIC is not connected to a hypothesis test, but permits us to arrange different nested models.
+If there are two models with AIC $ a_1 $ and $ a_2 $, then describe
+$$
+  \ exp \ left (\ frac {a_1-a_2} {2} \ right)
+$$
+the ratio of the chances that model 1 and model 2 have the minimum information loss.
+So a small AIC gives a greater chance to a model.
+
+Logistic regression is a special case of general linear models: there are functions so that one can write members of the exponential family on the left and replace the normally distributed error on the right.
+
+# Example logistic regression
+
+`` `{r}
+h <- load.mr.mnemonic ('M&R 11E-13 home ownership')
+`` `
+
+`` `{r}
+str (h)
+summary (h)
+`` `
+
+With the option `family =" binomial "` a logistic regression is chosen within the `glm` models.
+`` `{r}
+h.lr <- glm (homeowner ~ income, data = h, family = 'binomial')
+h.lr.c <- coefficients (h.lr)
+h.lr.c.1 <- sprintf ("%. 2f", exp (-h.lr.c [1]))
+h.lr.c.2 <- sprintf ("%. 5f", -h.lr.c [2])
+h.lm <- lm (income ~ homeowner, data = h)
+`` `
+
+The model is "h.lr"
+$$
+ \ text {homeowner} =
+  \ begin {cases}
+    1
+  & \ text {provided} U \ ge \ frac {1} {1 + `r h.lr.c.1`e ^ {` r h.lr.c.2` \ times \ text {income}}} \ ,,
+   \\
+   0
+   & \ text {provided} U <\ frac {1} {1 + `r h.lr.c.1`e ^ {` r h.lr.c.2` \ times \ text {income}}} \, .
+  \ end {cases}
+$$
+The "h.lm" model is
+$$
+  \ text {income}
+  = \ begin {cases}
+   `r sprintf ("%. 2f ", coefficients (h.lm) [1])` + E
+   & \ text {if homeowner = False,}
+   \\
+   `r sprintf ("%. 2f ", sum (coefficients (h.lm)))` + E
+   & \ text {if homeowner = True.}
+  \ end {cases}
+$$
+
+`` `{r}
+summary (h.lr)
+summary (h.lm)
+`` `
+`` `{r}
+anova (h.lm)
+anova (h.lr, test = 'Chisq')
+`` `
+
+Forecast vs data:
+`` `{r}
+plot (h $ homeowner ~ h $ income, pch = 16, main = 'Comparing predictions with data')
+h.inc.range <- range (h $ income)
+h.inc.dom <- seq (h.inc.range [1], h.inc.range [2], by = 100)
+h.ho.dom <- predict (h.lr, data.frame (income = h.inc.dom), type = "response")
+lines (h.ho.dom ~ h.inc.dom)
+```
+
+A variation of a Pearson test with $ H_0: "the prediction and the reality have the same distribution".
+`` `{r}
+library ('ResourceSelection')
+hoslem.test (h $ homeowner, fitted (h.lr))
+`` `
+
+Simulation (`h.ho.dom` via` predict` are already the right chances):
+`` `{r}
+h.inc.range <- range (h $ income)
+h.inc.dom <- seq (h.inc.range [1], h.inc.range [2], by = 100)
+plot (h.ho.dom ~ h.inc.dom, type = '1', ylim = c (-0.05, 1.05))
+h.ho.sim <- rbinom (n = length (h.ho.dom), size = 1, prob = h.ho.dom)
+points (h.ho.sim ~ h.inc.dom)
+`` `
+
+

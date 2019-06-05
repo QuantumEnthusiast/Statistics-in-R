@@ -1,0 +1,186 @@
+---
+title: "The t-test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Student t distribution
+
+Extract from [M&R, section 8-2.1] ().
+If $ (X_i) _ {i = 1} ^ n $ i.i.d. $ \ Normal {\ mu, \ sigma} $ divided, then the average
+$$ \ Mean {X}: = \ frac {1} {n} \ sum_ {i = 1} ^ n X_i $$
+and the standard deviation
+$$ S: = \ frac {1} {n-1} \ sum_ {i = 1} ^ n (X_i- \ Mean {X}) ^ 2 \,. $$
+The stochast
+$$ T: = \ frac {\ Mean {X} - \ mu} {S / \ sqrt {n}} $$
+$ \ TDist {n-1} $ is divided with $ (n-1) $ degrees of freedom.
+
+`` `{r}
+a <- -5
+b <- 5
+n <- 200
+points <- (0: n) / n * (b - a) + a
+plot (0, ylim = c (0,0.5), xlim = range (points), xlab = 'value', ylab = 'probability density', main = 'Probability density of different t-distributions')
+
+degrees of freedom <- c (1,2,3,4,5,10,20,30,40,50,75,100)
+colors <- grDevices :: rainbow (length (degrees of freedom))
+for (i in 1: length (degrees of freedom)) {
+  lines (dt (points, df = degrees of freedom [i]) ~ points, col = colors [i])
+}
+`` `
+`` `{r, echo = F}
+library (plotrix)
+`` `
+
+Color "` r color.id (colors [1]) [1] `" is $ \ TDist {`r degrees of freedom [1]`} $ up to "` r color.id (colors [length (degrees of freedom)]) [1] `" is $ \ TDist {`r degrees of freedom [length (degrees of freedom)]`} $.
+With $ \ infty $ degrees of freedom, $ \ TDist {n} $ is approaching $ \ Normal {0.1} $.
+The most spread is $ \ TDist {1} $ (the _Cauchy distribution_), with larger starts.
+
+# Double-sided t-test
+
+## Theory (two-way test)
+
+We follow the 7 steps in [M&R, section 9-1.6] ().
+Extract from [M&R, section 9-3.1, section 8-2.2] ().
+
+0. * Assumptions *: Data $ x_1, \ dotsc, x_n $ is sample of $ \ Normal {\ mu, \ sigma} $ distributed probability variables, with $ \ sigma $ unknown.
+
+1. * Parameter of interest *: Expectation value $ \ mu $.
+
+2. * Null hypothesis *: For a fixed value $ \ mu_0 $:
+$$ H_0: \ mu = \ mu_0 \,. $$
+
+3. * Alternative hypothesis *:
+$$ H_1: \ mu \ not = \ mu_0 \,. $$
+
+4. * Test variable *:
+
+Repetition: The sample mean (or the empirical mean) is
+$$ \ Mean {x}: = \ frac {1} {n} \ sum_ {i = 1} ^ n x_i $$
+and is the empirical standard deviation
+$$ s: = \ sqrt {\ frac {1} {n-1} \ sum_ {i = 1} ^ n (x_i- \ Mean {x}) ^ 2} \,. $$
+The test statistic is
+$$ t: = \ frac {\ Mean {x} - \ mu_0} {s / \ sqrt {n}} \,. $$
+
+
+5. * Decision *:
+Choose significance level $ \ alpha \ in [0,1] $.
+Reject $ H_0 $ as the $ p $ value $ \ le \ alpha $.
+
+6. * Calculation *:
+If $ T \ DistAs \ TDist {n-1} $, one calculates the $ p $ value
+$$ p: = \ Proba (T \ le - \ Modulus {t} \ text {or} \ Modulus {t} \ le T)
+= 2 \ Proba (T \ ge \ Modulus {t})
+= 2 \ Proba (T \ le - \ Modulus {t}) \,. $$
+See also [M&R, Appendix A, Table V] ().
+
+7. * Conclusion *:
+If $ p \ ge {} \ alpha $, then you must continue to accept $ H_0 $.
+If $ p \ le {} \ alpha $, you can reject $ H_0 $.
+
+8. * Confidence interval *:
+The confidence interval at the confidence level is $ 1- \ alpha $ on a scale of $ t $ below $ H_0 $
+$$ \ left [\ Quantile \ left (\ frac {\ alpha} {2} \ right), \ Quantile \ left (1- \ frac {\ alpha} {2} \ right) \ right] \ ,, $$
+where $ \ Quantile $ is the tilt function of a $ \ TDist {n-1} $ distribution.
+Calculating back after the $ \ mu $ scale gives the confidence interval
+$$ \ left [
+  \ Mean {x} - \ frac {s} {\ sqrt {n}} \ Quantile \ left (1- \ frac {\ alpha} {2} \ right)
+ , \ Mean {x} - \ frac {s} {\ sqrt {n}} \ Quantile \ left (\ frac {\ alpha} {2} \ right)
+  \ right] \,. $$
+  
+## Data
+`` `{r}
+data <- load.mr.mnemonic ('M&R 9-57 guinea pig birth weight in g')
+`` `
+`` `{r}
+summary
+sd (data)
+length (data)
+`` `
+`` `{r}
+hist (data)
+`` `
+
+## Review problem
+
+See [M&R, problem 9-57] ().
+
+`` `{r}
+alpha <- 0.05
+mu.zero <- 310
+`` `
+
+$ H_0: \ mu = 310 $.
+
+## Manual calculation
+
+`` `{r}
+n <- length (data)
+v <- n - 1
+m <- mean (data)
+s <- sd (data)
+t <- (m-mu.zero) / s * sqrt (n)
+t
+p <- 2 * pt (-abs (t), df = v)
+p
+p <= alpha
+`` `
+
+Key with test value `r t` and $ p $ value` r p`.
+Because `p <= alpha` is equal to` r p <= alpha`, we continue to accept $ H_0 $.
+
+`` `{r}
+interval <- m - s / sqrt (n) * c (qt (1 - alpha / 2, v), qt (alpha / 2, v))
+interval
+`` `
+
+The $ `r 100 * (1 - alpha)` $% confidence interval for $ \ mu_0 $ is $ [`r interval`] $.
+
+`` `{r}
+dom <- seq (-4, 4, length.out = 100)
+plot (dom, pt (dom, v), type = 'l', col = 'black', main = 'P-value calculation')
+lines (dom, dt (dom, f), col = 'blue')
+
+t.left <- abs (t)
+p.left <- pt (t.left, v)
+lines (c (-4.4), c (p.left, p.left), col = 'green')
+dom2 <- seq (-4, t.left, length.out = 20)
+polygon (c (-4, dom2, t.left), c (0, dt (dom2, v), 0), col = 'red', border = NA)
+
+t.right <- abs (t)
+p.right <- pt (t.right, v, lower.tail = F)
+lines (c (-4.4), 1 - c (p.right, p.right), col = 'green')
+dom3 <- seq (t.right, 4, length.out = 20)
+polygon (c (t.right, dom3, 4), c (0, dt (dom3, v), 0), col = 'red', border = NA)
+`` `
+
+## Calculation with R
+`` `{r}
+key <- t.test (data, mu = mu.zero, alternative = "two.sided", conf.level = 1 - alpha)
+test
+`` `
+
+`` `{r}
+key $ statistic
+`` `

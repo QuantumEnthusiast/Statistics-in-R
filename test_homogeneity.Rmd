@@ -1,0 +1,262 @@
+---
+title: "Chi-kwadraat homogeneity-test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+header-includes:
+  - \input{lib/macros.tex}
+output:
+  html_notebook:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+    toc_float: true
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Motivation homogeneity test
+
+Two samples from a discrete distribution. Are these samples independently distributed? Usually used to show that there is a connection (but not, of what kind).
+
+# Theory homogeneity test
+
+Application of Pearson test from [M&R, section 9-7] ().
+
+I. * Assumptions *:
+$ x_1, \ dotsc, x_n $ sample from $ P $ on $ \ Set {1, \ dotsc, k_1} \ times \ Set {1, \ dotsc, k_2} $.
+
+II. * Greatness of interest *:
+Distribution $ P $.
+Edge divisions $ P_1 $ on $ \ Set {1, \ dotsc, k_1} $ and $ P_2 $ on $ \ Set {1, \ dotsc, k_2} $.
+
+III. * Hypotheses *:
+$$ H_0: P = P_1 \ otimes P_2 \. $$
+$$ H_0: P \ not = P_1 \ otimes P_2 \. $$
+
+IV. * Test statistic *:
+
+The * empirical frequency * counts how many data are in each course:
+$$
+  f:
+  \ qquad
+  \ Set {1, \ dotsc, k_1} \ times \ Set {1, \ dotsc, k_2} \ to \ Nat
+  \ qquad
+  (i, j) \ mapsto {} \ Cardinality {\ Set {1 \ le l \ le n \ mid x_l = (i, j)}}
+  \ ,.
+$$
+The * empirical fringe frequencies * are
+$$
+  f ^ {(1)}:
+  \ qquad
+  \ Set {1, \ dotsc, k_1} \ to \ Nat
+  \ qquad
+  i \ mapsto {} \ Cardinality {\ Set {1 \ le l \ le n \ mid x_l = (i ,.)}}
+$$
+and
+$$
+  f ^ {(2)}:
+  \ qquad
+  \ Set {1, \ dotsc, k_2} \ to \ Nat
+  \ qquad
+  j \ mapsto {} \ Cardinality {\ Set {1 \ le l \ le n \ mid x_l = (., j)}}
+  \ ,.
+$$
+We compare the empirical frequency with the product of the peripheral frequencies.
+The estimator for the frequency of product distribution of the edge distributions is
+$$
+  f ^ \ otimes:
+  \ qquad
+  \ Set {1, \ dotsc, k_1} \ times \ Set {1, \ dotsc, k_2} \ to \ Nat
+  \ qquad
+  (i, j) \ mapsto {} \ frac {f ^ {(1)} (i) f ^ {(2)} (j)} {n}
+  \ ,.
+$$
+The test statistic is
+$$
+  k ^ 2: =
+   \ sum_ {i = 1} ^ {k_1} \ sum_ {j = 1} ^ {k_2}
+   \ frac {\ Bigl (f (i, j) -f ^ \ otimes (i, j) \ Bigr) ^ 2} {f ^ \ otimes (i, j)}
+  \ ,.
+$$
+For sufficiently large $ n $, $ K ^ 2 $ has a $ \ ChiSquare {(k_1 - 1) (k_2 - 1)} $ distribution.
+In practice, the central limit theorem requires $ f ^ {1} (i) f ^ 2 (j) $ not to be too small (rule of thumb: $ f ^ {1} (i) f ^ 2 (j) {} \ 5 $ for each course).
+
+V. * Decision *:
+Choose a significance level $ \ alpha \ in [0,1] $.
+Reject $ H_0 $ as the $ p $ value $ \ le \ alpha $.
+
+VI. * Confidence interval *:
+If $ K ^ 2 \ DistAs \ ChiSquare {k-1} $, the $ p $ value is calculated by
+$$ p: = \ Proba (k ^ 2 \ le K ^ 2) \,. $$
+See also [M&R, Appendix A, Table IV] ().
+
+
+`` `{r}
+<- load.mr.mnemonic ('M&R 9-103 machine breakdown per shift')
+fall out
+`` `
+`` `{r}
+chisq.test (drop out)
+`` `
+We may not reject "$ H_0 $: shift is machine independent" at significance level $ 5 $%.
+
+# Example: two dice
+
+`` `{r}
+d1 <- sample (1: 6, 200, replace = TRUE)
+ # + 1 mod 6
+d2 <- c (6, 1, 2, 3, 4, 5) [d1]
+d3 <- sample (1: 6, 200, replace = TRUE)
+# split and reverse magnitude within halfs
+d4 <- c (3, 2, 1, 6, 5, 4) [d3]
+d5 <- (d1 + d4) %% 6 + 1
+d6 <- pmax (d2, d3)
+
+dice <- data.frame (d1, d2, d3, d4, d5, d6)
+`` `
+
+`` `{r}
+library ('corrplot')
+corrplot :: corrplot (cor (dice))
+`` `
+
+
+`` `{r}
+pairs (dice)
+`` `
+
+Cross table between d1 and d6 (2d frequency table):
+`` `{r}
+t.16 <- table (d1, d6)
+`` `
+`` `{r}
+t.16
+addmargins (t.16)
+addmargins (prop.table (t.16))
+`` `
+
+A scatter plot does not properly show how many discrete values ​​there are, only where they are.
+`` `{r}
+plot (d1, d6)
+`` `
+
+A quick way to display a crosstab.
+`` `{r}
+# https://stackoverflow.com/questions/3712402/r-how-to-change-lattice-levelplot-color-theme#3712855
+lattice :: level plot (t.16
+                 , col.regions = gray (200: 100/200)
+                 , main = 'D1 vs D6'
+                 )
+`` `
+
+`` `{r}
+# https://stackoverflow.com/questions/20673584/visualizing-crosstab-tables-with-a-plot-in-r#20674019
+library ('ggplot2')
+g <- ggplot (as.data.frame (t.16), aes (d1, d6)) + geom_point (aes (size = Freq), color = "green") + theme_bw () + xlab ("") + ylab ("")
+g + scale_size_continuous (range = c (0, 20)) + geom_text (aes (label = Freq))
+`` `
+
+Two forms of the same test.
+`` `{r}
+chisq.test (d1, d6)
+`` `
+`` `{r}
+chisq.test (t.16)
+`` `
+The degrees of freedom are $ 25 = (6-1) ^ 2 $.
+We conclude that `d1` and` d6` are not independent at all.
+
+`` `{r}
+chisq.test (d1, d4)
+`` `
+We may not reject "$ H_0 $:` d1` and `d4` are independent".
+
+If one wants to test on a certain connection, then a Pearson test with a given $ 2d $ distribution must be made.
+
+`` `{r}
+table (d1, d6)
+`` `
+
+`` `{r}
+n <- sum (t.16)
+P.0 <matrix (
+  c (0, 0, 0, 0, 0, 6,
+    1, 1, 1, 1, 1, 1,
+    0, 2, 1, 1, 1, 1,
+    0, 0, 3, 1, 1, 1,
+    0, 0, 0, 4, 1, 1,
+    0, 0, 0, 0, 5, 1
+    ) / 36
+  nrow = 6, ncol = 6, byrow = T)
+P.0
+sum (P.0)
+`` `
+`` `{r}
+axis.vector (t.16)
+F.0 <- P.0 * n
+axis.vector (F.0)
+chisq.test (as.vector (t.16), p = as.vector (F.0), rescale.p = T)
+`` `
+Here we have $ 35 $ instead of just $ 25 $ degrees of freedom, because we don't test against product distribution.
+Problem with key: too many $ 0 $ boxes.
+We correct by filtering.
+`` `{r}
+chisq.test (t.16 [F.0> = 5], p = F.0 [F.0> = 5], rescale.p = T)
+`` `
+With $ 20 $ degrees of freedom remaining, we continue to accept $ H_0: P = P_0 $.
+
+# Other graphs for cross tables
+
+`` `{r}
+# https://stackoverflow.com/questions/33634593/define-breaks-for-hist2d-in-r
+library ('gplots')
+gplots :: hist2d (d1, d6, nbins = c (6, 6))
+`` `
+
+`` `{r}
+library ('descr')
+t <- descr :: CrossTable (d1, d6)
+plot (t)
+`` `
+
+`` `{r}
+mosaic plot (t.16, color = T)
+`` `
+
+`` `{r}
+library ('vcd')
+vcd :: mosaic (t.16)
+`` `
+
+`` `{r}
+heatmap (t.16, Rowv = NA, Colv = NA, col = terrain.colors (diff (range (t.16))), scale = NULL)
+`` `
+
+`` `{r}
+# heatmap.2 (t.16, scale = "none", dendrogram = "none", trace = "none", density.info = "histogram")
+`` `
+
+`` `{r}
+library ('RColorBrewer')
+num.colors <- 8
+colors <- RColorBrewer :: brewer.pal (num.colors, "Pastel1")
+t.16.cut <- cut (t.16, breaks = num.colors)
+t.16.cut
+levels (t.16.cut) [t.16.cut]
+t.16.recoded <- matrix (unclass (t.16.cut), nrow = 6, ncol = 6, byrow = TRUE)
+t.16.recoded
+heatmap (t.16.recoded, Rowv = NA, Colv = NA, col = RColorBrewer :: brewer.pal (num.colors, "Pastel1"))
+`` `

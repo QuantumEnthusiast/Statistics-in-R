@@ -1,0 +1,247 @@
+---
+title: "F-distribution and Levene test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# F distribution
+
+* Parameters: $ u, v \ in [0, \ infty [$.
+* Distribution: $ \ FDist {u, v} $.
+* Bearer: $ [0, \ infty [$.
+* Application: Ratio of variances.
+* Reference: [M&R, section 10-5.1] () [Wikipedia] (https://en.wikipedia.org/wiki/F- distribution).
+* Probability density function: not important here.
+* Expected value: $ \ frac {v} {v-2} $ (so $ v \ ge 3 $ required).
+* Variance: not important here.
+* Relationships:
+
+If $ X \ DistAs \ FDist {u, v} $ then $ \ frac {1} {X} \ DistAs \ FDist {v, u} $.
+This provides a convenient way to calculate small quantils via [M&R, Appendix A, Table VI] () on:
+$$ f _ {\ alpha, u, v} = \ frac {1} {f_ {1- \ alpha, v, u}} \,. $$
+Please note, in [M&R, Appendix A, Table VI] () there is $ u $ in the column and $ v $ in the line.
+
+If $ X \ DistAs \ TDist {n} $, then $ X ^ 2 \ DistAs \ FDist {1, n} is $.
+
+If $ X \ DistAs \ ChiSquare {n} $ and $ Y \ DistAs \ ChiSquare {m} $, then $ \ frac is {X} {Y} \ DistAs \ FDist {n, m} $.
+
+
+`` `{r}
+u <- 5
+v <- 10
+sample.size <- 30
+sample <- rf (sample. variable, df1 = u, df2 = v)
+plot.domain. upper limit <- max (sample, 4 * v / (v - 2))
+plot.domain <- seq (0, plot.domain. upper limit, length.out = 500)
+plot (plot.domain, pf (plot.domain, df1 = u, df2 = v), type = 'l', ylim = c (0.1), main = "F distribution", xlab = "values", ylab = "opportunity")
+polygon (c (min (plot.domain), plot.domain, max (plot.domain)), c (0, df (plot.domain, df1 = u, df2 = v), 0), col = "orange" , border = NA)
+points (sample, rep (0, sample, variable), col = 'blue', pch = 'x')
+plot (ecdf (sample), col = 'green', add = T)
+sample.densityfct <- density (sample, from = 0, to = plot.domain. upper limit)
+lines (sample density density, col = "red")
+`` `
+`` `{r}
+u <- 8
+m <- 10
+us <- rep (u, length.out = m)
+scaling <- 2
+vs <- sapply ((1: m) - 4, function (i) {return (u * scaling ^ i)})
+n <- 200
+b <- 10
+points <- (0: n) / n * b
+plot (0, ylim = c (0.1), xlim = range (points), xlab = 'value', ylab = 'probability density', main = 'Probability density of different F distributions')
+
+colors <- grDevices :: rainbow (m)
+for (i in 1: m) {
+  lines (df (points, df1 = us [i], df2 = vs [i]) ~ points, col = colors [i])
+}
+`` `
+
+`` `{r, echo = F}
+library (plotrix)
+`` `
+Color "` r color.id (colors [1]) [1] `" is $ \ FDist {`r us [1]`, `r vs [1]`} $ to "` r color.id ( colors [m]) [1] `" is $ \ TDist {`r us [m]`, `r vs [m]`} $.
+
+# Motivation Live test
+
+Do two independent normally distributed samples have the same variance?
+
+Example:
+I fire at a target with quince cannons. I set the cannons in such a way that on average they do not exceed / undermine the target. But there is still spread. Are the guns equally accurate? Is there a more accurate one?
+
+# Theory Life test (two-sided)
+
+See also [M&R, section 10-5-2] ().
+
+I. * Assumptions *:
+Given two independent samples $ x_1, \ dotsc, x_n $ from and $ \ Normal {\ mu_1, \ sigma_1} $ and $ y_1, \ dotsc, y_m $ from a $ \ Normal {\ mu_2, \ sigma_2} $.
+All four parameters $ \ mu_1 $, $ \ mu_2 $, $ \ sigma_1 $ and $ \ sigma_2 $ are unknown.
+
+II. * Greatness of interest *:
+The ratio between the variances $ \ lambda: = \ frac {\ sigma_1} {\ sigma_2} $.
+If $ \ lambda <1 $, swap the role of $ x $ and $ y $!
+
+III. * Hypotheses *:
+
+$$ H_0: \ sigma_1 = \ lambda \ sigma_2 \,. $$
+$$ H_1: \ sigma_1 \ not = \ lambda \ sigma_2 \,. $$
+
+IV. * Test statistic *:
+
+The test statistic is
+$$ f: = \ frac {s_x ^ 2} {\ lambda s_y ^ 2} \,. $$
+The distribution of $ F $ under $ H_0 $ is a $ \ FDist {n-1, m-1} $ - distribution.
+
+
+V. * Decision *:
+Choose a significance level $ \ alpha \ in [0,1] $.
+Suppose $ \ Quantile $ is the quantile function of $ \ FDist {n-1, m-1} $.
+The quantile function in [M&R, Appendix A, Table VI] () is with $ n-1 $ in the column and $ m-1 $ in the line.
+
+Reject $ H_0 $, if
+$$
+ f \ le \ Quantile \ left (\ frac {\ alpha} {2} \ right)
+ \ qquad \ text {or} \ qquad
+ \ Quantile \ left (1- \ frac {\ alpha} {2} \ right) \ le f
+ \ ,.
+$$
+
+VI. * Confidence interval *:
+Via the quantile function in [M&R, Appendix A, Table VI] (). In this table $ n-1 $ is in the column and $ m-1 $ in the line.
+
+VII. *Good to know*:
+Very sensitive to deviations from the assumption of a normal distribution.
+First do a "qqnorm" chart and a "shapiro.test".
+
+# Example Live test
+
+See [M&R, problem 10-65] ().
+
+`` `{r}
+etch.rate <- load.mr.mnemonic ('M&R 10-19 etch rate in mm / min')
+`` `
+`` `{r}
+str (etch.rate)
+summary (etch.rate)
+`` `
+
+## Press normal distribution
+
+`` `{r}
+attach (etch.rate)
+`` `
+
+
+`` `{r}
+qqnorm (acid.1, asp = 1)
+qqline (acid.1)
+qqnorm (acid.2, asp = 1)
+qqline (acid.2)
+`` `
+`` `{r}
+shapiro.test (acid.1)
+shapiro.test (acid.2)
+`` `
+
+We may not reject "$ H_0: $ population is normally distributed".
+
+# Hypothesis tests
+
+See [M&R, problem 10-65 a] ().
+
+We key $ H_0: \ sigma_1 = \ sigma_2 $ vs $ H_1: \ sigma_1 \ not = \ sigma_2 $ to $ \ alpha = 0.05 $.
+Here $ \ lambda = 1 $.
+
+`` `{r}
+key <- var.test (acid.1, acid.2, alternative = "two.sided")
+test
+`` `
+
+Because `key $ p.value` has the value` r key $ p.value`, we cannot reject $ H_0: \ sigma_1 = \ sigma_2 $.
+So there is no statistically significant difference at significance level $ 95 $%.
+
+We want to test:
+$$ H_0: \ frac {\ sigma_2} {\ sigma_1} \ not \ in] 0.5.2 [\,. $$
+$$ H_1: \ frac {1} {2} \ sigma_1 <\ sigma_2 <2 \ sigma_1 \,. $$
+
+Comments:
+
+* Must be split into two keys (with $ \ alpha = 0.025 $ due to Bonferroni).
+* Is the sample large enough?
+
+Test 1:
+$$ H_0 ^ {(1)}: \ frac {1} {2} \ sigma_1 \ ge \ sigma_2 \ quad \ text {or} \ quad \ frac {\ sigma_1} {\ sigma_2} \ ge 2 \,. $ $
+$$ H_1 ^ {(1)}:
+ \ frac {1} {2} \ sigma_1 <\ sigma_2
+ \ quad \ text {or} \ quad
+ \ frac {\ sigma_1} {\ sigma_2} <2
+ \,. $$
+`` `{r}
+test 1 <- var.test (acid.1, acid.2, ratio = 2, alternative = 'less')
+test.1
+`` `
+
+Test 2:
+$$ H_0 ^ {(2)}:
+ 2 \ sigma_1 \ le \ sigma_2
+ \ quad \ text {or} \ quad
+ \ frac {\ sigma_1} {\ sigma_2} \ le \ frac {1} {2}
+ \ quad \ text {or} \ quad
+ \ frac {\ sigma_2} {\ sigma_1} \ ge {} 2
+ \ ,.
+$$
+$$ H_1 ^ {(2)}:
+ 2 \ sigma_1> \ sigma_2
+ \ quad \ text {or} \ quad
+ \ frac {\ sigma_1} {\ sigma_2}> \ frac {1} {2}
+ \ quad \ text {or} \ quad
+ \ frac {\ sigma_2} {\ sigma_1} <2
+ \ ,.
+$$
+
+`` `{r}
+var.test (acid.2, acid.1, ratio = 2, alternative = 'less')
+test 2 <- var.test (acid 1, acid 2, ratio = 1/2, alternative = 'greater')
+test.2
+`` `
+
+Can reject both two $ H_0 ^ {(2)} $ at $ \ alpha = 0.025 $, but unfortunately $ H_0 ^ {(1)} $ cannot.
+Therefore cannot reject $ H_0 $.
+
+# Tangent: power of the test
+
+Power of these keys:
+See [M&R, Appendix A, Tables VII (q) and (r)] () for the one-sided tests.
+Because $ m = n = 10 is $, we can exchange parameters and only need to view the $ \ lambda = 2 $ case.
+
+Power:
+For $ \ alpha = 0.05 $, $ \ beta = 0.16 $.
+For $ \ alpha = 0.01 $, $ \ beta = 0.67 $.
+So for $ \ alpha = 0.025 $ we interpolate a $ \ beta $ from
+`` `{r}
+(0.67 - 0.16) / 0.04 * 0.015 + 0.16
+`` `
+
+Required $ n = m $:
+If we want $ 90 $% power, so $ \ beta = 0.1 $, then for $ \ alpha = 0.05 $ the sample quantity must be $ n = 30 $. Because the $ \ alpha = 0.01 $ term is smaller here anyway, the $ \ alpha = 0.05 $ term is sufficient.

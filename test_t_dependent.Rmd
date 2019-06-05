@@ -1,0 +1,188 @@
+---
+title: "Dependent t-test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Dependent t key
+
+Given a sample of paired data. Is there a difference in the average?
+
+Application:
+
+* Measurements from the same group, for each member before and after a system / procedure change.
+  Has there been an improvement, or at least no deterioration?
+
+## Theory test (left-sided)
+
+See also [M&R, section 10-4] ().
+
+I. * Assumptions *:
+Given a $ 2d $ sample $ ((x_1, y_1), \ dotsc, (x_n, y_n)) $
+with $ x: = (x_1, \ dotsc, x_n) $ a sample and $ \ Normal {\ mu_1, \ sigma_1} $ and $ y: = (y_1, \ dotsc, y_n) $ from a $ \ Normal {\ mu_2, \ sigma_2} $.
+Note: $ x $ and $ y $ are not independent!
+The parameters $ \ sigma_1 $ and $ \ sigma_2 $ are unknown.
+
+II. * Greatness of interest *:
+Difference between $ \ Delta expectation values: = \ mu_1- \ mu_2 $.
+
+III. * Hypotheses *:
+
+Given $ \ Delta_0 \ in \ Real $.
+
+$$ H_0: \ Delta \ ge \ Delta_0 \ qquad (\ text {or:} \ mu_1 \ ge \ mu_2 + \ Delta_0) \,. $$
+
+$$ H_1: \ Delta <\ Delta_0 \ qquad (\ text {or:} \ mu_1 <\ mu_2 + \ Delta_0) \,. $$
+
+IV. * Test statistic *:
+
+We count under $ \ Delta = \ Delta_0 $.
+
+Leave $ z: = x - y $.
+The test statistic is
+$$
+  t: = \ frac {\ Mean {z} - \ Delta_0} {s_z} \ sqrt {n}
+  \ ,.
+$$
+The distribution of $ T $ is $ \ TDist {n-1} $.
+The $ p $ value is $ \ Proba (T \ le t) $.
+
+V. * Decision *:
+Choose significance level $ \ alpha \ in [0,1] $.
+If $ p \ ge {} \ alpha $, then you must continue to accept $ H_0: \ mu_1 \ ge \ mu_2 + \ Delta_0 $.
+If $ p \ le {} \ alpha $, you can reject $ H_0: \ mu_1 \ ge \ mu_2 + \ Delta_0 $ and you know that $ H_1: \ mu_1 <\ mu_2 + \ Delta_0 $ at significance level $ \ alpha $ applies to.
+
+VI. * Confidence interval *:
+Like with $ t $ key.
+
+VII. *Good to know*:
+The omission of independence between $ X_i $ and $ Y_i $ halves the degrees of freedom of the $ t $ distribution from the independent $ t $ test. With small samples this can be a problem. See the discussion [M&R, section 10-4, pg 391] ().
+
+This test works reasonably well for probability distributions that are close to a normal distribution (symmetry, continuous, not skewed (skewness $ \ not = 0 $)).
+
+## Issue
+
+`` `{r}
+prog <- load.mr.mnemonic ('M&R 10-40 programming in min')
+`` `
+`` `{r}
+str (prog)
+summary (prog)
+`` `
+`` `{r}
+plot (prog $ lang.1 ~ prog $ lang.2, asp = 1)
+`` `
+## Calculation
+
+
+`` `{r}
+lang.diff <- prog $ lang.1 - prog $ lang.2
+`` `
+`` `{r}
+qqnorm (lang.diff, asp = 1)
+qqline (lang.diff)
+`` `
+`` `{r}
+shapiro.test (lang.diff)
+`` `
+
+
+`` `{r}
+t.test (prog $ lang.1, prog $ lang.2, paired = T, alternative = "two.sided", conf.level = 0.95)
+`` `
+
+`` `{r}
+t.test (lang.diff, alternative = "two.sided", conf.level = 0.95)
+`` `
+
+# Theory dependent Wilcoxon test (two-sided)
+
+A non-parametric alternative is a dependent Wilcoxon test on the difference per pair.
+
+I. * Assumptions *:
+
+Given a $ 2d $ sample $ ((x_1, y_1), \ dotsc, (x_n, y_n)) $
+with $ x: = (x_1, \ dotsc, x_n) $ a sample and continuous distribution $ P $ and $ y: = (y_1, \ dotsc, y_n) $ from $ P + \ Delta $.
+The distribution $ P $ and $ \ Delta $ are unknown.
+
+Note: $ x $ and $ y $ are not independent!
+
+II. * Greatness of interest *:
+Location displacement $ \ Delta $.
+Median $ \ mu $ of the difference $ x-y $.
+
+III. * Hypotheses *:
+Given $ \ mu_0 \ in \ Real $.
+
+$$ H_0: \ mu = \ mu_0 \,. $$
+
+$$ H_1: \ mu \ not = \ mu_0 \,. $$
+
+IV. * Test statistic *:
+
+$ Z: = X-Y $ has a symmetrical distribution.
+Apply Wilcoxcon rank statistics to $ z: = x-y $.
+
+V: * Decision *:
+Like in Wilcoxon key.
+
+VI: * Good to know *:
+Based on Wilcoxon test.
+Non-parametric test.
+Warning in case of non-continuous (so in particular discrete) distribution, because then grades do not have to be unambiguous.
+Note: the key does not test the difference between the medians of $ x $ and $ y $, but the median of the difference.
+That is not the same, because the median does not work in the same way as the expectation value with linear operations on random stops.
+
+# Example paired Wilcoxon
+
+`` `{r}
+wilcox.test (prog $ lang.1, prog $ lang.2, paired = T, alternative = "two.sided")
+`` `
+
+`` `{r}
+wilcox.test (lang.diff, alternative = "two.sided")
+`` `
+
+So we continue to accept $ H_0 $.
+
+
+`` `{r}
+tnum <- load.tsda.mnemonic ('TSDA TNUM o1')
+`` `
+
+`` `{r}
+summary (tnum)
+`` `
+`` `{r}
+box plot (tnum)
+`` `
+We test whether there is a scrambling of the figures of at least 3.
+So $ H_0: \ mu_1 + 3 \ ge \ mu_2 $ or $ \ Delta \ ge -3 $.
+
+`` `{r}
+alpha = 0.1
+wilcox.test (tnum $ v1, tnum $ v2, paired = T, alternative = less, mu = -3, conf.int = T, conf.level = 1 - alpha)
+`` `
+
+We reject $ H_0 $ and conclude at signification level $ `r as.integer (alpha * 100)` $% that there was a prancing of at least $ 3 $.

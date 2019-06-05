@@ -1,0 +1,239 @@
+---
+title: "Logistic Regression: advanced"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Theory
+
+Given variables $ Y $ with values ​​in $ \ Set {0,1} $ and $ X_1, \ dotsc, X_k $ at interval level.
+We cannot model $ Y $ directly, but only its conditional expectation:
+$$
+  \ Logit (\ Expect (Y | X = x))
+  = \ beta_0 + \ beta_1 x_1 + \ dotso + \ beta_k X_k
+  \ ,.
+$$
+Or vice versa
+$$
+  \ Expect (Y | X = x)
+  = \ Proba (Y = 1 | X = x)
+  = \ Logit ^ {- 1} (\ beta_0 + \ beta_1 x_1 + \ dotso + \ beta_k X_k)
+  = \ frac {1} {1 + e ^ {- (\ beta_0 + \ beta_1 x_1 + \ dotso + \ beta_k X_k)}}
+  \ ,.
+$$
+In terms of the _ chance ratio_, this is [M&R, (11-54)] ().
+$$
+  \ frac {\ Proba (Y = 1 | X = x)} {\ Proba (Y = 0 | X = x)}
+  = \ frac {\ Expect (Y | X = x)} {1- \ Expect (Y | X = x)}
+  = \ exp (\ beta_0 + \ beta_1 x_1 + \ dotso + \ beta_k X_k)
+  \ ,.
+$$
+The goal is to estimate $ \ beta $.
+
+_Good to know_:
+
+* Variables at nominal measurement level (`factor`) can again be modeled using virtual columns.
+* The * AIC * (* Akaike information criterion *) displays the logarithm of the relative probability of a model. They want a small AIC.
+* The * deviance * plays the role of the sum of squares from the multilinear regression.
+* The error has a logistic distribution.
+* Multicollinearity is the same problem as in multilinear regression.
+
+# Data
+
+That is the online extension of [M&R, Table 12E-3] () from [www.fueleconomy.gov] (https://www.fueleconomy.gov).
+`` `{r}
+fe.raw <- load.tsda.mnemonic ('TSDA fuel economy 2018')
+`` `
+
+`` `{r}
+fe <- data.frame (manif = fe.raw $ Mfr.Name
+               , class = fe.raw $ Carline.Class.Desc
+               , cylinder content = fe.raw $ Eng.Displ
+               , cylinders = fe.raw $ X..Cyl
+               , transmission = fe.raw $ Transmission
+               , stopstart = fe.raw $ Stop.Start.System..Engine.Management.System..Code
+               , range.manif = fe.raw $ MFR.Calculated.Gas.Guzzler.MPG
+               , fe.rating = factor (fe.raw $ FE.Rating..1.10.rating.on.Label., ordered = T)
+               , range.fe.stad = fe.raw $ City.FE..Guide .... Conventional.Fuel
+               , range.fe. highway = fe.raw $ Hwy.FE..Guide .... Conventional.Fuel
+               , range.fe.comb = fe.raw $ Comb.FE..Guide .... Conventional.Fuel
+              )
+`` `
+
+`` `{r}
+str (fe)
+summary (fe)
+`` `
+
+# Model selection
+
+We model 'stop start' by the other columns.
+
+We start with a full model.
+
+`` `{r}
+fe.logm.1 <- glm (stop start ~., data = fe, family = "binomial")
+`` `
+`` `{r}
+table (fe $ transmission)
+table (fe $ manif)
+`` `
+
+
+`` `{r}
+summary (fe.logm.1)
+`` `
+`` `{r}
+anova (fe.logm.1, test = 'Chisq')
+`` `
+Multicollinearity. The range columns are off.
+`` `{r}
+library ('car')
+fe.1.vif <- as.data.frame (car :: vif (fe.logm.1))
+fe.1.vif $ sig <- fe.1.vif $ `GVIF ^ (1 / (2 * Df))`> 5
+fe.1.vif
+`` `
+
+Are `stop start` and` manif` independent?
+How important are the $ 22 $ extra columns for `manif` in` fe.logm.1`?
+`` `{r}
+fe.t <- table (fe $ manif, fe $ stopstart)
+addmargins (fe.t)
+summary (fe.t)
+`` `
+
+Automatic search example.
+`` `{r}
+fe.step.1 <- step (fe.logm.1, direction = "backward", steps = 3)
+`` `
+
+We clear all the range columns except "range.manif", but also the "fe.rating" variables.
+`` `{r}
+fe.logm.2 <- glm (stop start ~ manif + class + cylinder capacity + cylinders + transmission + range.manif
+               , data = fe, family = "binomial")
+`` `
+
+Mmh, `fe.rating` was again $ 9 $ extra dimensions:
+`` `{r}
+anova (fe.logm.2, fe.logm.1, test = 'Chisq')
+`` `
+
+Are interactions important?
+We see that some are interesting. With `manif: cylinders` the deviance peels only $ 60 $ at $ 17 $ degrees of freedom, but the AIC goes down by $ 30 $. That is a model with $ e ^ 15 $ higher relative probability.
+From here one could add step by step.
+`` `{r}
+fe.step.inter <- step (fe.logm.1, ~. ^ 2, steps = 1)
+`` `
+
+# A model in detail
+
+We first clear up the data so that we no longer have 'NAs'.
+`` `{r}
+fe.3.raw <- fe [, c ('stop start', 'manif', 'class', 'cylinders', 'transmission', 'range.manif')]
+fe.3.complete <- fe.3.raw [complete.cases (fe.3.raw),]
+fe.3.logm <- glm (
+  stop start ~ manif + class + cylinders + transmission + range.manif +
+            manif: cylinders + transmission: range.manif
+ , data = fe.3.complete, family = "binomial")
+`` `
+`` `{r}
+anova (fe.3.logm, test = 'Chisq')
+`` `
+Multicollinearity - here comes an error because of perfect linear dependence.
+`` `{r}
+# car :: vif (fe.3.logm)
+`` `
+`` `{r}
+fe.4.logm <- glm (
+  stop start ~ manif + class + cylinders + transmission + range.manif
+ , data = fe.3.complete, family = "binomial")
+fe.4.vif <- as.data.frame (car :: vif (fe.4.logm))
+fe.4.vif $ sig <- fe.4.vif $ `GVIF ^ (1 / (2 * Df))`> 5
+fe.4.vif
+`` `
+
+# Quality of model
+
+Is the model sufficient?
+`` `{r}
+library ('ResourceSelection')
+hoslem.test (fe.3.complete $ stopstart, fitted (fe.4.logm))
+`` `
+
+`` `{r}
+fe.4.predicted <- predict (fe.4.logm, fe.3.complete, type = "response")
+fe.4.actual <- fe.3.complete $ stopstart == 'Y'
+fe.4.0as0 <- fe.4.actual == 0 & fe.4.predicted <0.5
+fe.4.0as1 <- fe.4.actual == 0 & fe.4.predicted> = 0.5
+fe.4.1as0 <- fe.4.actual == 1 & fe.4.predicted <0.5
+fe.4.1as1 <- fe.4.actual == 1 & fe.4.predicted> = 0.5
+plot (c (0.5, 0.5), c (0, 1), type = '1', xlim = c (-0.1, 1.1), ylim = c (-0.1, 1.1), asp = 1, xlab = 'predict ', ylab =' is', main = 'Red = wrong, Green = correct')
+points (fe.4.actual [fe.4.0as0] ~ fe.4.predicted [fe.4.0as0], col = 'green', pch = 'x')
+points (fe.4.actual [fe.4.0as1] ~ fe.4.predicted [fe.4.0as1], col = 'red', pch = 'x')
+points (fe.4.actual [fe.4.1as0] ~ fe.4.predicted [fe.4.1as0], col = 'red', pch = 'o')
+points (fe.4.actual [fe.4.1as1] ~ fe.4.predicted [fe.4.1as1], col = 'green', pch = 'o')
+`` `
+
+
+`` `{r}
+library ('InformationValue')
+`` `
+
+The above graph in a handy matrix:
+`` `{r}
+InformationValue :: confusionMatrix (fe.4.actual, fe.4.predicted)
+`` `
+
+Probable chance to correctly predict a $ 1 $ or $ 0 $.
+`` `{r}
+InformationValue :: sensitivity (fe.4.actual, fe.4.predicted)
+InformationValue :: specificity (fe.4.actual, fe.4.predicted)
+`` `
+Chance of incorrect prediction.
+`` `{r}
+InformationValue::misClassError(fe.4.actual, fe.4.predicted)
+```
+
+Ranking-based equation, whether $ y_i $ and $ y_j $ have the same order as $ p_i $ and $ p_j $. A la Wilcoxon statistic for two independent samples.
+`` `{r}
+InformationValue :: Concordance (fe.4.actual, fe.4.predicted)
+`` `
+
+What happens if we lower the cutoff from $ 1 $ to $ 0 $ ... how many $ 1 $ s do we predict correctly?
+Values ​​greater than $ 0.5 $ for the "AUROC" ("the area under the curve") are good.
+`` `{r}
+InformationValue :: plotROC (fe.4.actual, fe.4.predicted)
+`` `
+
+`` `{r}
+InformationValue :: optimCutoff (fe.4.actual, fe.4.predicted, optimizeFor = "Both")
+`` `
+With $ 0.59 $, less $ 0 $ is classified as error, but more $ 1 $ as error. Hardly any change here, so it really depends on the $ 1 $ being more important than the $ 0 $ or vice versa.
+Never make this kind of choice on the entire data, but only on a test section and then validate on an independent sample.
+`` `{r}
+InformationValue :: confusionMatrix (fe.4.actual, fe.4.predicted)
+InformationValue :: confusionMatrix (fe.4.actual, fe.4.predicted, threshold = 0.59)
+InformationValue :: misClassError (fe.4.actual, fe.4.predicted)
+InformationValue :: misClassError (fe.4.actual, fe.4.predicted, threshold = 0.59)
+`` `

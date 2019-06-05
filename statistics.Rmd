@@ -1,0 +1,265 @@
+---
+title: "Statistics"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Statistics
+
+Data given $ x: = (x_1, \ dotsc, x_n) $. See also [M&R, section 6-1] ().
+We want fixed antals (independent of $ n $) to describe the data $ x $.
+This is called a * statistic * of $ x $.
+There are two types of statistics in terms of calculation: moments and quantiles.
+There are different types of statistics in terms of meaning:
+
+* _center dimensions _ / _ central tendency_: Where is the center of the data?
+  Examples: average, median, trimmed average.
+* _strangement measures_: How spread are the data?
+  Examples: standard deviation, interquartile distance.
+* _ligging sizes_: Where are the data:
+  Examples: min, max, mode, quantiles.
+
+`` `{r}
+data <- load.mr.mnemonic ('M&R 6-7 piston diameters in mm')
+`` `
+`` `{r}
+dates
+`` `
+
+`` `{r}
+dotchart (data)
+`` `
+
+## Moments
+
+If $ x_1, \ dotsc, x_n $ has at least _ratio measurement level_.
+The $ k $ moment of $ x_1, \ dotsc, x_n $ is equal to $ \ displaystyle {} \ frac {1} {n ^ k} \ sum_ {i = 1} ^ n x_i ^ k $.
+
+Statistics based on it are:
+
+* _ average_ (first moment) (center size):
+$$ \ displaystyle \ Mean {x}: = \ frac {1} {n} \ sum_ {i = 1} ^ n x_i \,. $$
+
+* _ variance_ (second central moment) (spread measure):
+$$ \ displaystyle {} \ frac {1} {n-1} \ sum_ {i = 1} ^ n (x_i- \ Mean {x}) ^ 2 \. $$
+
+* _standard deviation_ or _standard deviation_ (spread measure):
+$$ \ displaystyle {} \ sigma: = \ sqrt {\ frac {1} {n-1} \ sum_ {i = 1} ^ n (x_i- \ Mean {x}) ^ 2} \,. $$
+
+* _kindness_ (_skew_) (standardized third central moment) (location measure):
+$$ \ displaystyle \ frac {1} {\ sigma ^ 3} \ sum_ {i = 1} ^ n (x_i- \ Mean {x}) ^ 3 \. $$
+
+* _peakiness_ (_kurtosis_) (standardized fourth central moment) (spread measure):
+$$ \ displaystyle \ left (\ frac {1} {\ sigma ^ 4} \ sum_ {i = 1} ^ n (x_i- \ Mean {x}) ^ 4 \ right) - 3 \,. $$
+The deduction of $ 3 $ comes from the value for a standard normal distribution.
+So a standard normal distribution has the value $ 0 $, more precise distributions are positive and flatter distributions are negative.
+`` `{r}
+data.mean <- mean (data)
+data.sd <- sd (data)
+library ('e1071')
+data.skew <- e1071 :: skewness (data)
+data.kurtosis <- e1071 :: kurtosis (data, type = 1)
+data.momenten <- c (data.mean, data.sd, data.skew, data.kurtosis)
+names (data.moments) <- c ('average', 'standard deviation', 'skewness', 'peakedness')
+`` `
+
+`` `{r}
+dates.moments
+`` `
+
+`` `{r}
+dotchart (data, sub = 'green = average, red = +/- standard deviation')
+lines (rep (data.mean, length (data) + 1), seq (0, length (data), by = 1), col = 'green')
+lines (rep (data.mean + data.sd, length (data) + 1), seq (0, length (data), by = 1), col = 'red')
+lines (rep (data.mean - data.sd, length (data) + 1), seq (0, length (data), by = 1), col = 'red')
+`` `
+
+
+
+`` `{r, include = F}
+plot.momenten <- function (data) {
+  data.mean <- mean (data)
+  data.sd <- sd (data)
+  data.skew <- e1071 :: skewness (data)
+  data.kurt <- e1071 :: kurtosis (data, type = 1)
+  data.dhf <- density (data)
+  data.dhf.ymax <- max (data.dhf $ y)
+  data.sub = paste ('average:', sprintf ('% 2.2f', data.mean)
+    , ',', 'standard deviation:', sprintf ('% 2.2f', data.sd)
+    , '\ n', 'skewness:', sprintf ('% 2.2f', data.skew)
+    , ',', 'peak period:', sprintf ('% 2.2f', data.kurt)
+    , '\ n', 'green = average, red = +/- standard deviation'
+    , sep = ""
+  )
+  hist (data, breaks = 20, sub = data.sub, xlab = '', ylab = 'Frequency', main = '')
+  n <- 2
+  m <- length (data)
+  lines (rep (data.mean, n), seq (0, m, length.out = n), col = 'green')
+  lines (rep (data.mean + data.sd, n), seq (0, m, length.out = n), col = 'red')
+  lines (rep (data.mean - data.sd, n), seq (0, m, length.out = n), col = 'red')
+}
+`` `
+
+Four data sets measure different properties.
+
+`` `{r}
+set.seed (20180410)
+data1 <- rnorm (100, mean = -3, sd = 2)
+data2 <- rnorm (100, mean = -3, sd = 0.2)
+data3 <- runif (100, min = -5, max = -1)
+data4 <- c (rexp (100, rate = 1/2))
+data5 <- c (rnorm (30, mean = -3, sd = 0.5), rnorm (70, mean = 7, sd = 0.5))
+data6 <- rexp (100, rate = 3) - rexp (100, rate = 3)
+`` `
+
+* Dataset 1 is normally distributed: skewness around 0 (symmetrical) and peakedness slightly negative ($ \ sigma = 2> 1 $ more spread).
+* Dataset 2 is normally distributed: skewness to 0 (symmetrical) and spikes slightly positive ($ \ sigma = 0.2 <1 $ less spread).
+* Data set 3 is evenly divided: skewness to 0 (symmetrical) and negative peak (no start due to limitation on interval).
+* Data set 4 is exponentially distributed: therefore positive skewness (large positive outliers) and positive peak (high risk of small values, no negative values).
+* Dataset 5 is a disproportionate association of two normal distributions: skewness positive (disproportionate $ 30 $% vs $ 70 $% bimodal mix) and negative peak (bimodal mix).
+* Data set 6 is the sum of 2 identical exponential samples: skewness around 0 (symmetrical, equal parameters of parts) and positive peak (larger outliers).
+
+`` `{r}
+oldpar <- par (mfrow = c (3.2))
+plot.moments (data1)
+plot.moments (data2)
+plot.moments (data3)
+plot.moments (data4)
+plot.moments (data5)
+plot.moments (data6)
+par (oldpar)
+```
+
+## Quantiles
+
+If $ x_1, \ dotsc, x_n $ has at least _ordinal measurement level_.
+If we rank the data, then we can count how many data points are smaller than a given value.
+Statistics are:
+
+* _minimum_ (location measure): $ \ min \ Set {x_1, \ dotsc, x_n} $.
+* _maximum_ (location measure): $ \ max \ Set {x_1, \ dotsc, x_n} $.
+* _median_ (center): Value $ m $, so that half of $ x_1, \ dotsc, x_n $ is less than $ m $.
+* _quartile_ (location measure): The $ k $ quartile is the value $ q $ so that a quarter, half, 3 quarters of $ x_1, \ dotsc, x_n $ is less than $ q $.
+* _deciel_ (location measure): The $ k $ the percentile is the value $ q $ so that $ 10 k $% of $ x_1, \ dotsc, x_n $ is less than $ q $.
+* _percentile_ (location measure): The $ k $ the percentile is the value $ q $ so that $ k $% of $ x_1, \ dotsc, x_n $ is less than $ q $.
+* _kwantiel_ (location measure): For $ p \ in [0,1] $, $ q_p $ is the value so that $ p \% $ of $ x_1, \ dotsc, x_n $ is less than $ q $.
+
+Note: if $ n $ is small, then quantiles are linearly interpolated.
+
+Note: median = $ 2 $ the quartile = $ 5 $ the decile = $ 50 $ th percentile = $ 0.5 $ quantile.
+
+* _stagger width_ (location measure): $ q_1 - q_0 $.
+* _interquartile spacing_ (scatter measure): $ q_ {0.75} - q_ {0.25}.
+
+The median and interquartile spacing often replace the average and standard deviation.
+
+`` `{r}
+solar <- load.mr.mnemonic ('M&R 6-12 solar intensity Spain')
+`` `
+`` `{r}
+str (solar)
+`` `
+
+`` `{r}
+dotchart (solar)
+`` `
+
+`` `{r}
+solar.quantiles <- c (median (solar), quantile (solar, 0.75), quantile (solar, 0.20), quantile (solar, 0.27), quantile (solar, 0.437))
+names (solar.quantiles) <- c ('median', '3rd quartile', '2nd decile', '27th percentile', '43 .7% quantile ')
+solar.quantiles
+`` `
+
+Because we have $ n = 37 $, the median is in a data point. All others values ​​are interpolated (the 3rd quartile here lies between two data points with the same value).
+`` `{r}
+dotchart (solar)
+for (i in 1: length (solar.quantiles)) {
+  val <- solar.quantiles [i]
+  lines (c (fall, fall), c (0, length (solar) + 1), col = 'red')
+  text (val + 5, length (solar) / 2, labels = names (solar.quantiles) [i], pos = 1, srt = 90, col = 'red')
+}
+`` `
+
+R offers useful commands for most important statistics.
+The `summary` command contains the five-digit summary plus the average.
+The `range` only contains` min` and `max`.
+
+`` `{r}
+summary (solar)
+range (solar)
+`` `
+
+## Trimmed average
+
+The idea for the _ trimmed average_ (center size) is: Grab the average of partial data between $ q_ {0.05} $ and $ q_ {0.95} $. So outliers have less influence. The median of the partial data remains the same as the median of the entire data. The averages of partial dates and entire data may differ. This difference can turn out to be beneficial and disadvantageous! Good to prevent measurement errors or gaming, bad to investigate extremes.
+
+Because the low values ​​in `solar` are less dense, outliers on average have a diminishing influence.
+If these are removed, the average of the rest increases.
+`` `{r}
+solar.trimmed <- c (mean (solar), mean (solar, trim = 0.05), mean (solar, trim = 0.2))
+names (solar.trimmed) <- c ('average', 'average trim 5%', 'average trim 20%')
+solar.trimmed
+`` `
+`` `{r}
+dotchart (solar)
+
+solar.quantile.025 <- quantile (solar, 0.025)
+solar.quantile.975 <- quantile (solar, 0.975)
+solar.select.trim.05 <- solar <= solar.quantile.025 | solar.quantile.975 <= solar
+
+solar.quantile.1 <- quantile (solar, 0.1)
+solar.quantile.9 <- quantile (solar, 0.9)
+solar.select.trim.2 <- solar <= solar.quantile.1 | solar.quantile.9 <= solar
+
+solar.indices <- 1: length (solar)
+points (solar [solar.select.trim.05], solar.indices [solar.select.trim.05], col = 'red', pch = 'x')
+points (solar [solar.select.trim.2], solar.indices [solar.select.trim.2], col = 'green', pch = '+')
+lines (c (solar.trimmed [1], solar.trimmed [1]), c (1, length (solar)), col = 'black')
+lines (c (solar.trimmed [2], solar.trimmed [2]), c (1, length (solar)), col = 'red')
+lines (c (solar.trimmed [3], solar.trimmed [3]), c (1, length (solar)), col = 'green')
+`` `
+
+## Mode
+
+If $ x_1, \ dotsc, x_n $ is random, but usually for _nominal measurement level_.
+The most common value or values. A location measure.
+Note: `mode` is a command for a different purpose.
+`` `{r}
+set.seed (20180618)
+data <- factor (sample (5, 31, replace = T), labels = c ('a', 'b', 'c', 'd', 'e'))
+`` `
+`` `{r}
+table (data)
+`` `
+
+
+`` `{r}
+summary (data)
+plot (data)
+`` `
+
+Here we have 2 values ​​with maximum frequency:
+`` `{r}
+levels (data) [which (table (data) == max (table (data)))]
+`` `

@@ -1,0 +1,49 @@
+---
+title: "Coda"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+# Domains
+
+* Theory: models, tests, distributions, graphs.
+
+* Execution: manually and with R, structure and presentation.
+
+* Attitude: pitfalls such as over-analysis, reliability, data sources, repeatability, etc.
+
+# Key points
+
+* Different measurement levels are important: information density, graphs, statistics, tests.
+
+* You can test on distribution.
+
+* Normal vs non-normally distributed world.
+
+* The right graphs show a lot, the wrong ones just confuse.
+
+* Multiple tests reduce significance.
+
+* Correlation is not the same as causality, and often not a linear relationship. See also multicollinearity.
+
+* Finding a good regression model takes time and is not easy.
+
+* A regression model can and must be validated in many ways.
+
+* More data is a smaller problem than too little data.
+
+* Be critical and do not trust a statistical statement that you have not falsified yourself.

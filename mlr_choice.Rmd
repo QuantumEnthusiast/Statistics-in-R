@@ -1,0 +1,171 @@
+---
+title: "Multilinear Regression: model choice"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Choice of a good model
+
+See also [M&R, section 12-6.3] ().
+
+* The best model often does not exist. Due to multicollinearity there are often several models that can be considered the best. In general, simpler models with fewer terms and fewer interactions with a constant high proportion of declared variance $ R ^ 2_ {adj} $ are preferred.
+
+* _Strategy 1_: Start with the zero model $ Y = \ beta_0 + E $.
+View all models $ Y = \ beta_0 + \ beta_1 X_i + E_i $, for all others variables $ X_i $, and choose the best.
+Continue like this, always adding the best of the not yet chosen terms.
+    * Advantage: nothing superfluous.
+    * Disadvantage: takes a long time.
+
+* _Strategy 2_:
+Start with the full model `y ~ .` and start removing the worst terms step by step.
+    * Advantage: Global view of what is important and what could be irrelevant.
+    * Disadvantage: Sometimes too many terms. Order unfortunately plays a role in ANOVA with multicollinearity.
+
+* _Strategy 3_:
+View all models simultaneously and choose the best. See [M&R, section (12-48)] ().
+    * Advantage: Global optimization.
+    * Disadvantage: Only with few variables and without interactions can the calculation power be achieved.
+    
+* _Explorative_:
+People often start interactively with a full model `y ~ .`, sometimes the model` y ~. ^ 2` for an overview. And then by removing and / or adding and finding a better model.
+
+* Important is the _validation_ of the final model chosen by:
+    * Adjusted proportion explained variance $ R ^ 2_ {adj} $.
+    * Residue analysis.
+    * ANOVA.
+    * Keys for outliers and multicollinearity.
+    * Sensitivity analysis under slightly disrupted data (not treated).
+    * Verification by applying to a new, independent sample.
+# Data
+
+That is the online extension of [M&R, Table 12E-3] () from [www.fueleconomy.gov] (https://www.fueleconomy.gov).
+`` `{r}
+fe.raw <- load.tsda.mnemonic ('TSDA fuel economy 2018')
+`` `
+
+`` `{r}
+fe <- data.frame (manif = fe.raw $ Mfr.Name
+               , class = fe.raw $ Carline.Class.Desc
+               , cylinder content = fe.raw $ Eng.Displ
+               , cylinders = fe.raw $ X..Cyl
+               , transmission = fe.raw $ Transmission
+               , stopstart = fe.raw $ Stop.Start.System..Engine.Management.System..Code
+               , range.manif = fe.raw $ MFR.Calculated.Gas.Guzzler.MPG
+               , fe.rating = factor (fe.raw $ FE.Rating..1.10.rating.on.Label., ordered = T)
+               , range.fe.stad = fe.raw $ City.FE..Guide .... Conventional.Fuel
+               , range.fe. highway = fe.raw $ Hwy.FE..Guide .... Conventional.Fuel
+               , range.fe.comb = fe.raw $ Comb.FE..Guide .... Conventional.Fuel
+              )
+str (fe)
+`` `
+
+# Model structure
+
+`` `{r}
+fe.lm.nul <- lm (range.fe.comb ~ 1, data = fe)
+summary (fe.lm.nul)
+`` `
+
+`` `{r}
+fe.lm.nul.1.r2 <- list ()
+fe.lm.nul.1.r2a <- list ()
+for (c in setdiff (colnames (fe), c ('range.fe.comb'))) {
+  s <- summary (lm (as.formula (paste ('range.fe.comb ~', c)), data = fe))
+  fe.lm.nul.1.r2 [[c]] <- s $ r.squared
+  fe.lm.nul.1.r2a [[c]] <- s $ adj.r.squared
+}
+data.frame (col = names (fe.lm.nul.1.r2)
+         , r.sq = unname (unlist (fe.lm.nul.1.r2))
+         , r.sq.a = unname (unlist (fe.lm.nul.1.r2a))
+)
+`` `
+
+`` `{r}
+sum (complete.cases (fe))
+add1 (fe.lm.nul, ~ manif + class + cylinder content + cylinders + transmission + stop start + range.manif + fe.rating + range.fe. city + range.fe. highway, test = "F")
+`` `
+
+# Interactions
+
+`` `{r}
+fe.lm.direct <- lm (range.fe.comb ~ manif + class + cylinder content + cylinders + transmission + stop start, data = fe)
+`` `
+`` `{r}
+summary (fe.lm.direct)
+anova (fe.lm.direct)
+`` `
+
+`` `{r}
+add1 (fe.lm.direct, ~. ^ 2, test = "F")
+`` `
+
+# Model reduction
+
+`` `{r}
+drop1 (fe.lm.direct, ~., test = "F")
+`` `
+
+# Automation
+
+`` `{r}
+fe.lm.a1 <- step (fe.lm.nul
+    , scope = ~ manif + class + cylinder capacity + cylinders + transmission +
+    stop start
+    , direction = 'forward'
+    , trace = 1)
+`` `
+
+`` `{r}
+anova (fe.lm.a1)
+`` `
+
+`` `{r}
+fe.lm.a2 <-step (fe.lm.direct
+   , scope = list ('lower' = ~ cylinder content)
+   , direction = 'backward'
+   , trace = 1
+   , steps = 2)
+`` `
+
+`` `{r}
+fe.lm.a3 <- step (fe.lm.direct
+   , scope = ~. ^ 2
+   , direction = 'both'
+   , trace = 1
+   , steps = 2)
+`` `
+
+# Validation
+
+`` `{r}
+fe.lm.final <- lm (range.fe.comb ~ manif + class + cylinder capacity + cylinders + transmission +
+    stop start + transmission: stop start + manif: transmission + class: transmission, data = fe)
+`` `
+`` `{r}
+anova (fe.lm.final)
+`` `
+`` `{r}
+plot (fe.lm.final)
+```
+

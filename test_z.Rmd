@@ -1,0 +1,302 @@
+---
+title: "The z-test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Left-sided z key
+
+## Theory
+
+We follow the 7 steps in [M&R, section 9-1.6] ().
+Extract from [M&R, section 9-2.1, (8-7) of section 8-2.2] ().
+
+0. * Assumptions *: Data $ x_1, \ dotsc, x_n $ is a sample of i.i.d. $ \ Normal {\ mu, \ sigma} $ distributed probability variables, known with $ \ sigma $.
+
+1. * Parameter of interest *: Expectation value $ \ mu $.
+
+2. * Null hypothesis *: For a fixed value $ \ mu_0 $:
+$$ H_0: \ mu \ ge \ mu_0 \,. $$
+Note: We calculate with the extreme case $ \ mu = \ mu_0 $.
+
+3. * Alternative hypothesis *:
+$$ H_1: \ mu <\ mu_0 \,. $$
+
+4. * Test variable *:
+Repetition: The sample mean (or the empirical mean) is
+$$ \ Mean {x}: = \ frac {1} {n} \ sum_ {i = 1} ^ n x_i \,. $$
+The test statistic is
+$$ z: = \ frac {\ Mean {x} - \ mu_0} {\ sigma / \ sqrt {n}} \,. $$
+We know that $ Z \ DistAs \ Normal {0.1} $.
+
+5. * Decision *:
+Choose a significance level $ \ alpha \ in [0,1] $.
+Reject $ H_0 $ as the $ p $ value $ \ le \ alpha $.
+
+6. * Calculation *:
+Recurrence: $ \ SNDF $ is the probability distribution function of a $ \ Normal {0.1} $ distribution.
+The $ p $ value is
+$$ p: = \ SNDF (z) \,. $$
+See also [M&R, Appendix A, Table III] ().
+
+7. * Conclusion *:
+If $ p \ ge {} \ alpha $, you can reject $ H_0 $.
+If $ p \ le {} \ alpha $, then you must continue to accept $ H_0 $.
+
+8. * Confidence interval *:
+The confidence interval at the confidence level is $ 1- \ alpha $ on a scale of $ z $ below $ H_0 $
+$$ \ left [\ SNDF ^ {- 1} (\ alpha), \ infty \ right [\,. $$
+Calculating back after the $ \ mu $ scale gives the confidence interval
+$$ \ left]
+  - \ infty,
+  \ Mean {x} - \ frac {\ sigma} {\ sqrt {n}} \ SNDF ^ {- 1} (\ alpha)
+  \ right] \,. $$
+
+## Data
+
+`` `{r}
+links.sigma <- 3
+links.mu.zero <- 6
+links.mu.echt <- 5
+links.n <- 7
+links.alpha <- 0.05
+`` `
+
+`` `{r}
+set.seed (20180528)
+links.sample <- rnorm (links.n, mean = links.mu.echt, sd = links.sigma)
+`` `
+
+
+We are testing $ H_0: \ mu \ ge `r links.mu.zero` $ vs $ H_1: \ mu <` r links.mu.zero` $.
+Calculations take place with $ \ Normal {`r links.mu.zero`,` r links.sigma`} $.
+
+## Summary data
+
+`` `{r}
+summary (left.sample)
+hist (left.sample)
+box plot (left.sample)
+plot (density (left.sample))
+dotchart (left.sample)
+`` `
+
+## Manual calculation
+
+`` `{r}
+links.statistics <- (mean (left.sample) - links.mu.zero) / links.sigma * sqrt (links.n)
+links.stats
+`` `
+`` `{r}
+left.p.value <- pnorm (left.state)
+left.p.value
+links.p.value <= links.alpha
+`` `
+`` `{r}
+dom <- seq (-4, 4, length.out = 100)
+plot (dom, pnorm (dom), type = 'l', col = 'black', main = 'P-value calculation')
+lines (c (-4.4), c (left.p.value, left.p.value), col = 'green')
+lines (dom, dnorm (dom), col = 'blue')
+dom2 <- seq (-4, left.statistics, length.out = 20)
+polygon (c (-4, dom2, left.statistics), c (0, dnorm (dom2), 0), col = 'red', border = NA)
+`` `
+
+* Conclusion *: Because `left.p.value <= left.alpha` has the value` r left.p.value <= left.alpha`, we cannot reject $ H_0 $ at the significance level `r left.alpha`. The test statistic is `r links.statistics`.
+
+Note: this happens because only `r links.n` values ​​are viewed and the` seed` is fixed.
+
+`` `{r}
+links.interval.z <- c (qnorm (links.alpha), Inf)
+links.interval.z
+links.interval.mu <- (mean (left.sample) - links.sigma / sqrt (links.n) * links.interval.z) [c (2, 1)]
+links.interval.mu
+`` `
+
+With $ `r 100 * (1 - left.alpha)` $% chance, the real $ \ mu $ is in the interval $ (`r left.interval.mu [1]`, `r left.interval.mu [2 ] `) $.
+
+## Calculation with R
+
+`` `{r}
+library ('TeachingDemos')
+key <- TeachingDemos :: z.test (left.sample, mu = left.mu.zero, sd = left.sigma, alternative = "less", conf.level = 1 - left.alpha)
+test
+`` `
+
+`` `{r}
+key $ p.value
+key $ statistic
+attr (key $ conf.int, "conf.level")
+`` `
+
+# Two-sided z-test
+## Theory
+
+We follow the 7 steps in [M&R, section 9-1.6] ().
+Extract from [M&R, section 9-2, (8-5) of section 8-1.1] ().
+
+0. * Assumptions *: Data $ x_1, \ dotsc, x_n $ is a sample of i.i.d. $ \ Normally {\ mu, \ sigma} $ distributed probability variables, known with $ \ sigma $.
+
+1. * Parameter of interest *: Expectation value $ \ mu $.
+
+2. * Null hypothesis *: For a fixed value $ \ mu_0 $:
+$$ H_0: \ mu = \ mu_0 \,. $$
+
+3. * Alternative hypothesis *:
+$$ H_1: \ mu \ not = \ mu_0 \,. $$
+
+4. * Test variable *:
+The allowance quantity is
+$$ z: = \ frac {\ Mean {x} - \ mu_0} {\ sigma / \ sqrt {n}} \,. $$
+We know that $ Z \ DistAs \ Normal {0.1} $.
+
+5. * Decision *:
+Choose a significance level $ \ alpha \ in [0,1] $.
+Reject $ H_0 $ as the $ p $ value $ \ le \ alpha $.
+
+6. * Calculation *:
+The $ p $ value is
+$$ p: = (1- \ SNDF (\ Modulus {z})) + \ SNDF (- \ Modulus {z}) = 2 (1- \ SNDF (\ Modulus {z})) \,. $$
+See also [M&R, Appendix A, Table III] ().
+
+7. * Conclusion *:
+If $ p \ ge {} \ alpha $, then you must continue to accept $ H_0 $.
+If $ p \ le {} \ alpha $, you can reject $ H_0 $.
+
+8. * Confidence interval *:
+The confidence interval at the confidence level is $ 1- \ alpha $ on a scale of $ z $ below $ H_0 $
+$$ \ left [\ SNDF ^ {- 1} \ left (\ frac {\ alpha} {2} \ right), \ SNDF ^ {- 1} \ left (1- \ frac {\ alpha} {2} \ right) \ right] \,. $$
+Calculating back after the $ \ mu $ scale gives the confidence interval
+$$ \ left [
+  \ Mean {x} - \ frac {\ sigma} {\ sqrt {n}} \ SNDF ^ {- 1} \ left (1- \ frac {\ alpha} {2} \ right)
+ , \ Mean {x} - \ frac {\ sigma} {\ sqrt {n}} \ SNDF ^ {- 1} \ left (\ frac {\ alpha} {2} \ right)
+  \ right] \,. $$
+
+## Data
+
+`` `{r}
+two sample <- c (7, 4, 5, 6, 3, 4.5, -1, 7, 3, 12)
+two sample
+two.sigma <- 3
+two.mu.zero <- 5
+two.alpha <- 0.1
+`` `
+We are testing $ H_0: \ mu = `r two.mu.zero` $ vs $ H_1: \ mu \ not =` r two.mu.zero` $.
+Please note, we have not tested whether "two-sample" is really normally distributed.
+
+## Summary data
+
+`` `{r}
+summary (two sample)
+sd (two sample)
+hist (two sample)
+box plot (two sample)
+`` `
+
+## Manual calculation
+
+`` `{r}
+two.stats <- (mean (two.sample) - two.mu.zero) / two.sigma * sqrt (length (two.sample))
+two.stats
+two.stats.min <- abs (two.stats)
+two.state.max <- abs (two.state)
+`` `
+
+`` `{r}
+two.p.value.lives <- pnorm (two.statistics.min)
+two.p.value.right <- pnorm (two.statistics.max, lower.tail = F)
+two.p.value <- two.p.value.left + two.p.value.right
+dual value
+two.p.value <= two.alpha
+`` `
+
+`` `{r}
+dom <- seq (-4, 4, length.out = 100)
+plot (dom, pnorm (dom), type = 'l', col = 'black', main = 'P-value calculation')
+lines (dom, dnorm (dom), col = 'blue')
+
+lines (c (-4.4), c (two.p.value.lives, two.p.value.lives), col = 'green')
+dom2 <- seq (-4, two.statistics.min, length.out = 20)
+polygon (c (-4, dom2, two-statistic.min), c (0, dnorm (dom2), 0), col = 'red', border = NA)
+lines (c (-4.4), 1 - c (two.p.value.right, two.p.value.right), col = 'green')
+dom3 <- seq (two.statistics.max, 4, length.out = 20)
+polygon (c (two.stats.max, dom3, 4), c (0, dnorm (dom3), 0), col = 'red', border = NA)
+`` `
+
+* Conclusion *: Because `two.p.value <= two.alpha` has the value` r two.p.value <= two.alpha`, we may reject $ H_0 $ at level `r two.alpha`.
+
+`` `{r}
+two.interval.z <- c (qnorm (two.alpha / 2), qnorm (1-two.alpha / 2))
+two.interval.z
+two.interval.mu <- mean (two.sample) - two.sigma / sqrt (length (two.sample)) * two.interval.z [c (2, 1)]
+two.interval.mu
+`` `
+
+With $ `r 100 * (1 - two.alpha)` $% chance, the real $ \ mu $ is in the interval $ (`r two.interval.mu [1]`, `r two.interval.mu [2 ] `) $.
+
+
+## Calculate with R
+
+`` `{r}
+library ('TeachingDemos')
+TeachingDemos :: z.test (two.sample, mu = two.mu.zero, sd = two.sigma, alternative = "two.sided", conf.level = 1 - two.alpha)
+`` `
+
+# Significance level and p value below $ H_0 $
+
+See also [M&R, section 9-1.6] ().
+Given is a significance level $ \ alpha $.
+Then under $ H_0 $ generated data would have a test statistic, which in $ 1- \ alpha $ of the cases are within the acceptance range.
+Or vice versa, in $ \ alpha $ of the cases within the critical area.
+We do $ m $ experiments with a sample size of $ n $.
+`` `{r}
+m <- 200
+alpha <- 0.11
+sigma <- 2
+mu.zero <- 3
+n <- 150
+data <- rnorm (m * n, mean = mu.zero, sd = sigma)
+upper limit <- qnorm (1-alpha / 2)
+border. below <- qnorm (alpha / 2)
+c (lower border, upper border)
+`` `
+`` `{r}
+statistics <- 1: n
+for (i in 1: m) {
+  d <- data [1: n + (i-1) * n]
+  t <- TeachingDemos :: z.test (d, mu = mu.zero, sd = sigma, alternative = "two.sided", conf.level = 1-alpha)
+  statistics [i] <- t $ statistic
+}
+`` `
+
+`` `{r}
+plot (density (statistics), main = 'Density test value', sub = 'Red lines show boundaries acceptance area.')
+lines (rep (boundary below, 2), c (0, 0.5), col = 'red')
+lines (rep (upper limit, 2), c (0, 0.5), col = 'red')
+`` `
+`` `{r}
+external borders <- sum ((statistics <border below) | (border above <statistics))
+`` `
+Here, `r outside. Limits` values ​​fall outside the acceptance range.
+It was expected for `r alpha * m`.
+In fact, `statistics` has a $ \ Poisson {\ alpha m} = \ Poisson {` r alpha * m`} $ distribution.

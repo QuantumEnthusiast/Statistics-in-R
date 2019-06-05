@@ -1,0 +1,180 @@
+---
+title: "Gamma, Erlang en chi-kwadraat verdelingen"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+Repeat:
+`` `{r, echo = F}
+knitr :: include_graphics (path = './img/relatie_dichtheid_univariat.png')
+`` `
+
+# Erlang distribution
+
+* Values: $ [0, \ infty [$.
+* Parameters: $ k \ in \ Nat, \ lambda> 0 $.
+* Distribution: $ \ Erlang {k, \ lambda} $.
+* Application: Queue theory.
+* Reference: [M&R, section 4-9] (). [Wikipedia] (https://en.wikipedia.org/wiki/Erlang- distribution).
+* Probability density function: $ \ frac {(\ lambda x) ^ {k-1}} {(k-1)!} \ Lambda e ^ {- \ lambda x} $.
+* Expected value: $ \ frac {k} {\ lambda} $.
+* Variance: $ \ frac {k} {\ lambda ^ 2} $.
+* Exponential if $ k = 1 $: $ \ Erlang {1, \ lambda} = \ Exponential {\ lambda} $.
+* Sum of independent $ \ Exponential {\ lambda} $ - distributed random boxes: If $ X_1, \ dotsc, X_k distributes $ \ Exponential {\ lambda} $ - independently, then $ \ sum_ {i = 1} ^ k X_i \ DistAs {} \ Erlang {k, \ lambda} $.
+
+```{r}
+lambda <- 0.5
+k <- 3
+n <- 30
+sample <- rgamma (n, shape = 2 * k, rate = 1 / lambda)
+plot.domain <- seq (0, 20, length.out = 500)
+plot (plot.domain
+   , pgamma (plot.domain, shape = 2 * k, rate = 1 / lambda)
+   , type = "l"
+   , ylim = c (0, 1)
+   , main = paste ('Erlang (', k, ',', lambda, ')', sep = '')
+   , xlab = "values"
+   , ylab = "opportunity"
+   )
+polygon (c (min (plot.domain), plot.domain, max (plot.domain))
+      , c (0, dgamma (plot.domain, shape = 2 * k, rate = 1 / lambda), 0)
+      , col = "orange"
+      , border = NA
+      )
+points (sample, rep (0, n), col = 'blue', pch = 'x')
+plot (ecdf (sample), col = 'green', add = T)
+Sample Density Fct <- Density (Sample)
+lines (sample density density, col = "red")
+```
+
+# Gamma function
+
+The Gamma function [Wikipedia] (https://en.wikipedia.org/wiki/Gamma function)
+$$
+\ Gamma: \ qquad [0, \ infty [\ to [0, \ infty [\ qquad z \ mapsto \ int_0 ^ {\ infty} t ^ {z-1} e ^ {- t} \ D {t}
+$$
+is a generalization of the faculty.
+In particular, $ \ Gamma (n) = (n-1)! $, For $ n \ in \ Nat $.
+Difficult to draw, because it is growing fast.
+`` `{r}
+gamma.dom <- seq (from = 1, to = 5, length.out = 101)
+gamma.im <- sapply (gamma.dom, gamma)
+plot (gamma.dom, gamma.im, type = '1', ylim = c (0, 24), main = "Gamma function", xlab = "x", ylab = "Gamma (x)")
+points (c (1, 2, 3, 4.5), c (1, 1, 2, 6, 24), col = "red")
+`` `
+
+
+# Chi-squared distribution
+
+* Values: $ [0, \ infty [$.
+* Parameters: $ k \ in \ Nat $.
+* Distribution: $ \ ChiSquare {k} $.
+* Application: Statistics.
+* Reference: [M&R, sections 4-9 or 8-3] (). [Wikipedia] (https://en.wikipedia.org/wiki/Chi- squared distribution).
+* Probability density function: $ \ frac {1} {2 ^ {k / 2} \ Gamma (k / 2)} x ^ {k / 2 - 1} e ^ {- x / 2} $.
+* Expected value: $ k $.
+* Variance: $ 2k $.
+* Sum of squares from independent standard normally distributed randomists: If $ X_1, \ dotsc, X_k $ independently divides $ \ Normal {0,1} $ -, then $ \ sum_ {i = 1} ^ k X_i ^ 2 \ DistAs { } \ ChiSquare {k} $.
+
+`` `{r}
+k <- 5
+n <- 50
+sample <- rchisq (n, df = k)
+plot.domain <- seq (0, 20, length.out = 500)
+plot (plot.domain, pchisq (plot.domain, df = k)
+   , type = "l"
+   , ylim = c (0, 1)
+   , main = paste ('Chi-squared (', k, ')', sep = '')
+   , xlab = "values"
+   , ylab = "opportunity"
+   )
+polygon (c (min (plot.domain), plot.domain, max (plot.domain))
+      , c (0, dchisq (plot.domain, df = k), 0)
+      , col = "orange"
+      , border = NA
+      )
+points (sample, rep (0, n), col = 'blue', pch = 'x')
+plot (ecdf (sample), col = 'green', add = T)
+sample.densityfct <- density (sample, from = 0)
+lines (sample density density, col = "red")
+`` `
+
+`` `{r}
+b <- 10
+n <- 200
+points <- (0: n) / n * (b)
+plot (0, ylim = c (0.1), xlim = range (points), xlab = 'value', ylab = 'probability density'
+     , main = 'Probability density of different Chi-squared distributions')
+degrees of freedom <- c (1,2,3,4,5,10,20,30)
+colors <- grDevices :: rainbow (length (degrees of freedom))
+for (i in 1: length (degrees of freedom)) {
+  lines (dchisq (points, df = degrees of freedom [i]) ~ points, col = colors [i])
+}
+`` `
+
+`` `{r, echo = F}
+library (plotrix)
+`` `
+
+Color "` r color.id (colors [1]) [1] `" is $ \ ChiSquare {`r degrees of freedom [1]`} $ up to "` r color.id (colors [length (degrees of freedom)]) [1] `" is $ \ ChiSquare {`r degrees of freedom [length (degrees of freedom)]`} $.
+With higher degrees of freedom, the $ \ ChiSquare {n} $ distribution becomes more extensive and gets a bigger start.
+
+# Gamma distribution
+
+* Values: $ [0, \ infty [$.
+* Parameters: $ k, \ theta> 0 $.
+* Distribution: $ \ GammaDist {k, \ theta} $.
+* Application: Generalization of Erlang and Chi-squared distributions.
+* Reference: [M&R, section 4-9] (). [Wikipedia] (https://en.wikipedia.org/wiki/Gamma- distribution).
+* Probability density function: $ \ frac {1} {\ theta ^ k \ Gamma (k)} x ^ {k-1} e ^ {- x / \ theta} $ with the Gamma function $ \ Gamma (z): = \ int_0 ^ {\ infty} t ^ {z-1} e ^ {- t} \ D {t} $.
+* Expected value: $ k \ theta $.
+* Variance: $ k \ theta ^ 2 $.
+* Scales: $ X \ DistAs {} \ GammaDist {k, \ theta} $, $ c> 0 $, then $ cX \ DistAs {} \ GammaDist {k, c \ theta} $.
+* Relationship with exponential distribution: $ \ Exponential {\ lambda} = \ GammaDist {1.1 / \ lambda} $.
+* Relationship with Erlang distribution: $ \ Erlang {k, \ lambda} = \ GammaDist {2k, 1 / \ lambda} $.
+* Relationship with Chi-squared distribution: $ \ ChiSquare {2k} = \ GammaDist {k, 2} $.
+
+`` `{r}
+shape <- 2.5
+rate <- 0.3
+n <- 50
+sample <- rgamma (n, shape = shape, rate = rate)
+plot.domain <- seq (0, 20, length.out = 500)
+plot (plot.domain, pgamma (plot.domain, shape = shape, rate = rate)
+  , type = "l"
+  , ylim = c (0.1)
+  , main = paste ('Gamma (', shape, ',', rate, ')', sep = '')
+  , xlab = "values"
+  , ylab = "opportunity"
+  )
+polygon (c (min (plot.domain), plot.domain, max (plot.domain))
+      , c (0, dgamma (plot.domain, shape = shape, rate = rate), 0)
+      , col = "orange"
+      , border = NA
+      )
+points (sample, rep (0, n), col = 'blue', pch = 'x')
+plot (ecdf (sample), col = 'green', add = T)
+Sample Density Fct <- Density (Sample)
+lines (sample density density, col = "red")
+`` `

@@ -1,0 +1,250 @@
+---
+title: "Linear regression"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Model linear regression
+
+See also [M&R, section 11-2 and beyond] ().
+We model a population of $ (Y_i) _ {i = 1} ^ n $ through
+
+$$ Y_i = \ beta_0 + \ beta_1 x_i + E_i
+   \ qquad \ text {for} i \ in \ Set {1, \ dotsc, n}
+   \ ,.
+$$
+The $ (E_i) _ {i = 1} ^ n $ are independent and $ \ Normal {0, \ sigma} $ - divides.
+Therefore $ Y_i \ DistAs \ DistAs is {\ beta_0 + \ beta_1 x_i, \ sigma} $.
+
+The problem is to estimate $ \ beta_0 $, $ \ beta_1 $, and $ \ sigma $.
+The estimation is done using the _ least-squares method and is for $ \ hat {\ beta} _0 $ in [M&R, (11-7)] (), $ \ hat {\ beta} _1 $ in [M&R, (11- 8)] () and $ \ hat {\ sigma} $ in [M&R, (11-13)] ().
+
+Analysis of the model:
+
+* A $ t $ key for $ H_0: \ beta_0 = 0 $ in [M&R, section 11-4] ().
+* A $ t $ key for $ H_0: \ beta_1 = 0 $ in [M&R, section 11-4] ().
+* A $ F $ key for $ H_0: \ beta_1 = 0 $ in [M&R, section 11-4.2] ().
+* Confidence intervals for $ \ beta_0 $ and $ \ beta_1 $.
+* An analysis of the residues (= _soils_) on normal distribution via quantile-quantile plot [M&R, section 11-7] () and Shapiro-Wilk test.
+* The _coefficient of determination_ [M&R, section 11-7.2 and (11-34)] () which represents the proportion of the variance predicted by the model.
+* A correlation test via the regression coefficient [M&R, section 11-8] ().
+* Make predictions [M&R, section 11-6] ().
+
+# Example optimum situation
+
+`` `{r}
+o.n <- sample (200: 300, 1)
+o.x <- runif (o.n, 1, 5)
+o.sigma <- 2
+o.e <- rnorm (o.n, 0, 2)
+o.beta.0 <- -2
+o.beta.1 <- 3
+o.y <- o.beta.0 + o.beta.1 * o.x + o.e
+`` `
+`` `{r}
+plot (o.y ~ o.x)
+`` `
+`` `{r}
+cor (o.x, o.y)
+`` `
+
+## Modeling with R
+
+`` `{r}
+o.lm <- lm (o.y ~ o.x)
+`` `
+`` `{r}
+elm
+`` `
+`` `{r}
+o.beta.hat.0 <- o.lm $ coefficients [1]
+o.beta.hat.1 <- coefficients (o.lm) [2]
+o.predict <- o.beta.hat.0 + o.beta.hat.1 * o.x
+all (abs (o.beta.hat.0 + o.beta.hat.1 * o.x - predict (o.lm)) <. Machine $ double.eps)
+`` `
+
+`` `{r}
+plot (o.y ~ o.x)
+lines (o.predict ~ o.x, col = "red")
+`` `
+
+## Manual model validation
+
+Are the residues normally distributed?
+`` `{r}
+o.residue <- o.y - o.predict
+`` `
+`` `{r}
+plot (o.residue ~ o.x)
+`` `
+`` `{r}
+qqnorm (o.residue)
+qqline (o.residue)
+`` `
+
+```{r}
+summary(o.residue)
+shapiro.test(o.residue)
+```
+Sum of squares [M&R, (11-12)] ():
+`` `{r}
+o.sk.e <- sum (o.residue ^ 2)
+o.sk.t <- sum (o.y ^ 2) - o.n * ​​mean (o.y) ^ 2
+`` `
+
+Estimator for $ \ sigma $ [M&R, (11-13)] (). There is a factor $ \ frac {1} {n-2} $ because we have already estimated two parameters $ \ beta_0 $ and $ \ beta_1 $:
+`` `{r}
+sigma
+o.sigma.hat <- sqrt (o.sk.e / (o.n - 2))
+o.sigma.hat
+sd (o.residue)
+sqrt (sd (o.residue) ^ 2 * (o.n - 1) / (o.n - 2))
+`` `
+`R ^ 2` [M&R, (11-34)] () and
+`` `{r}
+o.r <- 1 - o.sk.e / o.sk.t
+o.r
+`` `
+
+No tests performed.
+
+## Validation with R
+
+All statistics and most tests are processed here.
+You want that:
+
+1. `R ^ 2` is close to $ 1 $.
+2. The $ t $ keys are significant. That means that the coefficients are non-null.
+3. The $ F $ test is significant.
+
+`` `{r}
+summary (o.lm)
+`` `
+
+Four graphs:
+
+1. Residues with local estimator. You want a horizontal bar closer to the $ x $ axis.
+2. Quantiel-normal plot residues. You want a straight line, especially in the start.
+3. Root of absolute value of normalized residues. You want to stay within the $ [0, 3] $ interval.
+4. How much residue and influence each data point has. You want a horizontal bar without outliers on the right.
+`` `{r}
+plot (o.lm)
+`` `
+
+Confidence intervals and forecasting
+`` `{r}
+confint (o.lm)
+`` `
+`` `{r}
+o.x2 <- runif (30, -3, 10)
+o.bi.c <- predict (o.lm, data.frame (o.x = o.x2), interval = "confidence")
+plot (o.bi.c [, "fit"] ~ o.x2
+  , pch = 'x', col = 'red'
+  , main = 'Confidence intervals and simulation'
+  , xlab = 'x',
+  , ylab = "y")
+lines (o.x2, o.bi.c [, "fit"], col = "red")
+lines (o.x2, o.bi.c [, "lwr"], col = "blue")
+lines (o.x2, o.bi.c [, "upr"], col = "blue")
+o.bi.p <- predict (o.lm, data.frame (o.x = o.x2), interval = "prediction")
+lines (o.x2, o.bi.p [, "lwr"], col = "green")
+lines (o.x2, o.bi.p [, "upr"], col = "green")
+points (o.x2, predict (o.lm, data.frame (ox = o.x2)) + rnorm (length (o.x2), 0, sd = summary (o.lm) $ sigma), pch = ' O')
+`` `
+
+# Example reel data
+
+Exercises [M&R, Exercises 11-6, 11-28 and]
+
+`` `{r}
+gas <- load.mr.mnemonic ('M&R 11E-3 gasoline mileage data (in ^ 3, mpg)')
+`` `
+
+`` `{r}
+str (gas)
+summary (gas)
+`` `
+`` `{r}
+plot (gas $ range ~ gas $ engine capacity)
+`` `
+`` `{r}
+cor (gas $ range, gas $ engine capacity)
+`` `
+
+`` `{r}
+gas.lm <- lm (range ~ displacement, data = gas)
+`` `
+
+`` `{r}
+summary (gas.lm)
+`` `
+
+`` `{r}
+plot (gas.lm)
+```
+`` `{r}
+gas.predict <- predict (gas.lm, gas, interval = "prediction")
+plot (gas.predict [, "fit"] ~ gas $ displacement
+  , pch = "x"
+  , col = 'red'
+  , ylim = range (as.vector (gas.predict))
+  , ylab = 'range'
+  , xlab = 'engine capacity'
+  , main = 'Confidence intervals and simulation'
+  )
+lines (gas $ cylinder capacity, gas.predict [, "fit"], col = "red")
+lines (gas $ cylinder capacity, gas.predict [, "lwr"], col = "green")
+lines (gas $ cylinder capacity, gas.predict [, "upr"], col = "green")
+points (gas $ cylinder capacity, gas $ range, pch = 'o')
+`` `
+
+`` `{r}
+library ('car')
+car :: outlierTest (gas.lm)
+`` `
+
+Data point 20 is an outlier and strongly influences the model.
+
+`` `{r}
+gas2 <- gas [! (1: nrow (gas)% in% c (20)),]
+gas2.lm <- lm (range ~ cylinder capacity, data = gas2)
+summary (gas2.lm)
+`` `
+`` `{r}
+plot (gas2.lm)
+`` `
+`` `{r}
+gas2.predict <- predict (gas2.lm, gas2, interval = "prediction")
+plot (gas2.predict [, "fit"] ~ gas2 $ displacement
+  , pch = "x"
+  , col = 'red'
+  , ylim = range (as.vector (gas2.predict))
+  )
+lines (gas2 $ cylinder capacity, gas2.predict [, "fit"], col = "red")
+lines (gas2 $ cylinder capacity, gas2.predict [, "lwr"], col = "green")
+lines (gas2 $ cylinder capacity, gas2.predict [, "upr"], col = "green")
+points (gas2 $ cylinder capacity, gas2 $ range, pch = 'o')
+`` `
+
+The influence of data point 15 is increased in the reduced data collection.

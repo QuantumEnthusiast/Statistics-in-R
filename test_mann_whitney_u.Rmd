@@ -1,0 +1,159 @@
+---
+title: "Mann Whitney U test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Motivation Mann Whitney U test (two-sided)
+
+Do two independent continuously and symmetrically distributed samples have the same expectation value?
+
+Non-parametric alternative to the independent $ t $ test.
+
+# Mann Whitney U theory test
+
+See also [M&R, section 10-3] ().
+
+I. * Assumptions *:
+Provided two independent samples $ x_1, \ dotsc, x_ {n_x} $ and $ \ Normal {\ mu_1, \ sigma} $ and $ y_1, \ dotsc, y_ {n_y} $ from a continuous distribution $ P $ and $ P + \ Delta $.
+
+II. * Greatness of interest *:
+Expectation values ​​of the samples $ \ mu_1 $ and $ \ mu_2 $ and their difference $ \ Delta = mu_1 - \ mu_2 $.
+
+III. * Hypotheses *:
+Choose $ \ Delta_0 \ in \ Real $.
+$$ H_0: \ mu_1 = \ mu_2 + \ Delta_0 \ quad \ text {or} \ quad \ Delta = \ Delta_0 \,. $$
+$$ H_1: \ mu_1 \ not = \ mu_2 + \ Delta_0 \ quad \ text {or} \ quad \ Delta \ not = \ Delta_0 \,. $$
+
+IV. * Test statistic *:
+
+Here all for $ \ Delta_0 = 0 $.
+Sort $ x $ and $ y $ together. Determine its position in the sorting for each value.
+For $ x_i $ that is $ \ Rank (x_i) $.
+List these for $ x $ and $ y $: $ w_x $ and $ w_y $.
+So
+$$ r_x: = \ sum_ {i = 1} ^ {n_x} \ Rank (x_i) \,. $$
+$$ r_y: = \ sum_ {j = 1} ^ {n_y} \ Rank (y_j) \,. $$
+Always
+$$ r_x + r_y = \ sum_ {k = 1} ^ {n_x + n_y} k = \ frac {(n_x + n_y) (n_x + n_y + 1)} {2} = \ binom {n_x + n_y + 1} {2} \,. $$
+
+The test statistic is defined differently.
+In [M&R, (10-21)] (), it is
+$$
+  u: = \ begin {cases}
+    r_x & \ text {if} n_x <n_y \ ,,
+    \\
+    r_y & \ text {if} n_x> n_y \ ,.
+    \\
+    \ frac {r_x + r_y} {2} & \ text {if} n_x = n_y \ ,.
+    \ end {cases}
+$$
+If $ \ Delta_0 = 0 $, then we expect $ R_x $ and $ R_y $ to have somewhat the same distribution. So we expect that $ U $ is close to $ \ frac {(n + m) (n + m + 1)} {4} $.
+Small values ​​of $ U $ let us reject $ H_0 $.
+So it is basically a left-sided test.
+The $ p $ value is taken from [M&R, Appendix A, Table X] ().
+
+For `R` it is
+$$ h: = r_x - \ binom {n_x + 1} {2} \,. $$
+Here, small and large values ​​of $ U $ let us reject $ H_0 $.
+So it is basically a two-way test.
+The $ p $ value is obtained from `pwilcox (., $ N_x $, $ n_y $)`.
+Under $ H_0 $, $ U $ has a symmetrical distribution on $ \ Set {0, \ dotsc, \ binom {n_x + n_y + 1} {2} - \ binom {n_y + 1} {2}} $.
+
+V. * Decision *:
+Choose significance level $ \ alpha \ in [0,1] $.
+If $ p \ ge {} \ alpha $, then you must continue to accept $ H_0: \ mu_1 \ ge \ mu_2 + \ Delta_0 $.
+If $ p \ le {} \ alpha $, you can reject $ H_0: \ mu_1 \ ge \ mu_2 + \ Delta_0 $ and you know that $ H_1: \ mu_1 <\ mu_2 + \ Delta_0 $ at significance level $ \ alpha $ applies to.
+
+VI. *Good to know*:
+It is a kind of Wilcoxcon test for two independent samples.
+Non-parametric test.
+
+# Example Mann Whitney U
+
+See [M&R, problem 10-31] ().
+`` `{r}
+circuits <- load.mr.mnemonic ('M&R 10-31 current in μA')
+`` `
+``` {r}
+str (circuits)
+summary (circuits)
+`` `
+
+`` `{r}
+circuit.1 <- circuits $ circuit.1
+circuit.2 <- na.omit (circuits $ circuit.2)
+circuit.all <- c (circuit.1, circuit.2)
+n.1 <- length (circuit.1)
+n.2 <- length (circuit.2)
+n.all <- n.1 + n.2
+`` `
+
+
+`` `{r}
+xlims <- extendrange (r = range (circuit.all), f = 0.5)
+plot (density (circuit.1), xlim = xlims, main = "empirical densities")
+lines (density (circuit.2), col = 'red')
+`` `
+
+We test:
+$$ H_0: \ mu_1 = \ mu_2 \ quad \ text {or} \ quad \ Delta = 0 \.
+$$ H_1: \ mu_1> \ mu_2 \ quad \ text {or} \ quad \ Delta> 0 \.
+Manual:
+`` `{r}
+ranks <- rank (circuit.all)
+grades
+r.1 <- sum (grades [1: n.1])
+r.1
+r.2 <- sum (grades [(n.1 + 1): n.all])
+r.2
+`` `
+Such as [M&R, (10-21)] ():
+`` `{r}
+u.mr <- r.1 * (n.1> = n.2) + r.2 * (n.1 <n.2)
+u.mr
+`` `
+From the table at $ (9.8) $ we get that `u.mr` for $ \ alpha = 0.01 $ smaller or equal to $ 45 $ and for $ \ alpha = 0.05 $ smaller or equal to $ 51 $.
+
+Such as "R":
+`` `{r}
+correction.r <- choose (n.1 + 1, 2)
+u.r <- r.1 - correction.r
+u.r
+pwilcox (u.r, n.1, n.2, lower.tail = F)
+`` `
+Automatically with "R".
+The $ p $ value is slightly different, because "R" makes a correction because of "ties".
+`` `{r}
+alpha <- 0.01
+wilcox.test (circuits $ circuit.1, circuits $ circuit.2, alternative = "greater", paired = F, conf.int = T, conf.level = 1 - alpha)
+`` `
+We cannot reject $ H_0 $ at significance level $ `r alpha` $.
+
+For comparison, a Welch test (independent t test with unequal variances).
+`` `{r}
+shapiro.test (circuits $ circuit.1)
+shapiro.test (circuits $ circuit.2)
+t.test (circuits $ circuit.1, circuits $ circuit.2, alternative = "greater")
+`` `

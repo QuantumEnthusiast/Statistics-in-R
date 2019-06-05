@@ -1,0 +1,142 @@
+---
+title: "Wilcoxon test"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Wilcoxon key
+
+If $ P $ is a symmetrical distribution, the median is equal to the expected value.
+Use the median to estimate the expected value.
+
+## Theory test (right-sided)
+
+We follow the 7 steps in [M&R, section 9-1.6] ().
+See also [M&R, section 9-9.2] ().
+
+I. * Assumptions *:
+Sample $ x_1, \ dotsc, x_n $ from symmetrical continuous distribution $ P $.
+
+Note: Suppose the median is $ \ mu $. Symmetry can be tested by testing $ \ Set {x_1, \ dotsc, x_n} $ vs $ \ Set {\ mu-x_1, \ dotsc, \ mu-x_n} $ for the same distribution.
+
+II. * Greatness of importance *: $ \ mu $ expected value of $ P $. This does not have to be a parameter of $ P $.
+
+III. * Hypotheses *: For a fixed value $ \ mu_0 $.
+
+$$ H_0: \ mu \ le \ mu_0 \,. $$
+$$ H_1: \ mu> \ mu_0 \
+
+IV. * Test statistic *:
+
+We calculate with "$ \ mu = \ mu_0 $".
+Suppose
+$$ y_i: = x_i - \ mu_0 \,. $$
+
+Sort their absolute values: $ \ Modulus {y_i} $ has position $ \ Rank (\ Modulus {y_i}) \ in \ Set {1, \ dotsc, n} $.
+Their weighted sum is
+$$
+  w: = \ sum_ {i = 1} ^ n \ Signum (y_i) \ Rank (\ Modulus {y_i})
+  \ ,.
+$$
+The $ p $ value is taken from [M&R, Appendix A, Table IX] ().
+
+V. * Decision *:
+Choose significance level $ \ alpha \ in [0,1] $.
+If $ p \ ge {} \ alpha $, then you must continue to accept $ H_0: \ mu \ le \ mu_0 $.
+If $ p \ le {} \ alpha $, you can reject $ H_0: \ mu \ le \ mu_0 $ and know that $ H_1: \ mu> \ mu_0 $ applies at level $ \ alpha $.
+
+VI. *Good to know*:
+Non-parametric test.
+Operates at ordinal measurement level using the median.
+Problems with non-continuous (so all discrete) distribution, because then grades do not have to be unambiguous.
+Distribution of the test statistics in "R" with "psignrank".
+
+## Issue
+
+`` `{r}
+drying time data <- load.mr.mnemonic ('M&R 9-117 paint drying time in h')
+`` `
+`` `{r}
+drying time
+summary (drying time.data)
+`` `
+`` `{r}
+plot (density (drying time.data))
+`` `
+
+`` `{r}
+alpha <- 0.08 # chosen by yourself
+mu.zero <- 1.5
+`` `
+
+$ H_0: \ mu \ le `r mu.zero` $ vs $ H_1: \ mu>` r mu.zero` $.
+
+## Calculation step by step
+
+`` `{r}
+y <- drying time.data - mu.zero
+y
+z <- abs (y)
+z
+```
+`` `{r}
+data.frame (abs. difference = z, rank = rank (z))
+`` `
+
+Because the precision of the data is so low, there are equal values ​​in the 'rank' column of the table above.
+
+`` `{r}
+w <- sum (rank (z) * sign (y))
+w
+`` `
+
+Because in [M&R, Appendix A, Table IX] () there is a value of $ 60 $ at $ n = 20 $ and $ \ alpha = 0.05 / 0.10 $ (we have $ \ alpha = `r alpha` $), that $ w $ is much larger and therefore we can reject $ H_0 $.
+
+## Calculation with R
+
+`` `{r}
+key <- wilcox.test (x = drying time.data, mu = mu.zero, alternative = 'greater', conf.int = TRUE, conf.level = 1 - alpha)
+test
+`` `
+
+The error message comes from the "ties", where the rank in $ \ Modulus {y} $ is not unambiguous.
+
+Yes, we are pretty sure that $ \ mu \ ge`r mu.zero` $, because the $ p $ value is $ `r key $ p.value` $.
+
+# Not the t test?
+
+Can't we use the $ t $ key? We first test graphically and numerically on a normal distribution.
+
+`` `{r}
+qq standard (drying time.data)
+qqline (drying time.data)
+`` `
+`` `{r}
+shapiro.test (drying time.data)
+`` `
+
+`` `{r}
+t.test (x = drying time.data, mu = mu.zero, alternative = 'greater', conf.int = TRUE, conf.level = 1 - alpha)
+`` `
+

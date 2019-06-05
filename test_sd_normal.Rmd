@@ -1,0 +1,164 @@
+---
+title: "Test variance normal distribution"
+author: "Rob van der Nagel"
+date: "12-3-19"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: pygments
+    toc: yes
+    toc_float:
+      collapsed: false
+  html_document:
+    highlight: pygments
+    toc: yes
+  pdf_document:
+    highlight: pygments
+    toc: yes
+urlcolor: blue
+---
+
+```{r, include = F}
+rm(list = ls())
+source('lib/utils.r')
+```
+```{r, child = c('lib/macros.tex')}
+```
+
+# Test of variance normal distribution
+
+Problem: We know the expected value $ \ mu $ of a normal distribution and now want to test hypotheses about the standard deviation $ \ sigma $.
+
+## Two-sided theory test
+
+We follow the 7 steps in [M&R, section 9-1.6] ().
+Contents of [M&R, section 9-4] ().
+
+0. * Assumptions *: Sample $ x_1, \ dotsc, x_n $ of i.i.d. $ \ Normal {\ mu, \ sigma} $ - distributed probability variables with $ \ mu $ known.
+
+1. * Parameter of interest *: $ \ sigma $.
+
+2. * Null hypothesis *:
+$$ H_0: \ sigma = \ sigma_0 \,. $$
+
+3. * Alternative hypothesis *:
+$$ H_1: \ sigma \ not = \ sigma_0 \,. $$
+
+4. * Test variable *:
+
+Recurrence: The * empirical standard deviation * is
+$$
+  s: = \ sqrt {\ frac {1} {n-1} \ sum_ {i = 1} ^ n (x_i- \ Mean {x})}
+  \ ,.
+$$
+The test statistic is
+$$
+  k ^ 2: = \ frac {(n-1) s ^ 2} {\ sigma_0 ^ 2}
+$$
+and a $ \ ChiSquare {n-1} $ - is divided.
+Handy: We do not need $ \ mu $ in the calculation.
+
+5. * Decision *:
+Choose a significance level $ \ alpha \ in [0,1] $.
+
+6. * Calculation *:
+If $ \ mathcal {K} \ DistAs \ ChiSquare {n-1} $, then calculate the $ \ frac {\ alpha} {2} $ and $ 1- \ frac {\ alpha} {2} $ - quantiles of $ K $.
+Name these $ k ^ 2 _ {\ alpha / 2} $ and $ k ^ 2_ {1- \ alpha / 2} $.
+See also [M&R, Appendix A, Table IV] ().
+
+7. * Conclusion *:
+If $ k ^ 2 _ {\ alpha / 2} \ lek ^ 2 \ lek ^ 2_ {1- \ alpha / 2} $, then you must continue to accept $ H_0 $.
+If $ k ^ 2 _ {\ alpha / 2} <k ^ 2 $ or $ k ^ 2> k ^ 2_ {1- \ alpha / 2} $, you can reject $ H_0 $.
+
+Note: Because $ \ ChiSquare {n-1} $ is not symmetrical, one must work here with pre-calculated quantiles for a two-sided test.
+A one-sided test would simply work via a $ p $ value, i.e. the correct one-sided probability of exceeding.
+
+8. * Confidence interval *:
+See [M&R, section 8-3, (8-19)] ().
+The confidence interval for $ \ sigma ^ 2 $ at the confidence level $ 1- \ alpha $ below $ H_0 $ is
+$$
+  \ left (\ frac {(n-1) s ^ 2} {k ^ 2 _ {\ alpha / 2}}, \ frac {(n-1) s ^ 2} {k ^ 2_ {1- \ alpha / 2 }} \ right) \ ,.
+$$
+For $ \ sigma $ it is
+$$
+  \ left (
+   \ sqrt {\ frac {(n-1)} {k ^ 2 _ {\ alpha / 2}}} s
+   , \ sqrt {\ frac {(n-1)} {k ^ 2_ {1- \ alpha / 2}}} s
+  \ right) \ ,.
+$$
+
+## Data
+
+Exercise [M&R, exercise 9-78] ().
+
+`` `{r}
+weight <- load.mr.mnemonic ('M&R 8-51 gauge paper weight')
+n <- length (weight)
+alpha <- 0.05
+sigma.zero <- 0.01
+`` `
+`` `{r}
+weight
+n
+`` `
+
+```{r}
+dotchart(weight)
+```
+Press $ H_0: \ sigma = `r sigma.zero` $ vs $ H_1: \ sigma \ not =` r sigma.zero` $ with $ \ alpha = `r alpha` $ via critical area.
+
+## Calculation
+
+There is no routine in `R` for this test.
+
+Test variable:
+`` `{r}
+s <- sd (weight)
+s
+k.square <- (n - 1) * s ^ 2 / sigma.zero ^ 2
+k.square
+`` `
+
+Critical area and ask if $ k ^ 2 $ is within critical area:
+`` `{r}
+quantiel.links <- qchisq (alpha / 2, df = n - 1)
+quantiel.links
+quantiel.right <- qchisq (1 - alpha / 2, df = n - 1)
+quantiel.right
+reject <- k.square <= quantiel.links | quantiel.right <= k.square
+reject it
+`` `
+
+We cannot reject $ H_0 $.
+
+Confidence interval at level $ `r 1-alpha` $ for $ \ sigma $ and $ \ sigma ^ 2 $.
+`` `{r}
+interval.sigma.square <- (n - 1) * s ^ 2 * c (quantiel.links, quantiel.right)
+interval.sigma.square
+interval.sigma <- sqrt (interval.sigma.square)
+interval.sigma
+in.interval.sigma <- interval.sigma [1] <s & s <interval.sigma [2]
+`` `
+Because `in.interval.sigma` has a value of` r in.interval.sigma`, `s` is NOT in the` r 1-alpha` confidence interval.
+
+## Example one-sided test
+
+With the same data.
+`` `{r}
+sigma.zero <- 0.02
+alpha <- 0.1
+`` `
+
+We test $ H_0: \ sigma = `r sigma.zero` $ vs $ H_1: \ sigma <` r sigma.zero` $ at significance level $ \ alpha = `r alpha` $.
+
+Under $ H_0 $, large values ​​of $ k ^ 2 $ are common. We therefore test for the probability of exceeding small values.
+
+`` `{r}
+k.square <- (n - 1) * s ^ 2 / sigma.zero ^ 2
+k.square
+p.value <- pchisq (k.square, df = n -1)
+p.value
+p.value <= alpha
+`` `
+
+We may therefore reject $ H_0 $ and "know (with significance $` r alpha` $) that $ \ sigma <`r sigma.zero` $.
